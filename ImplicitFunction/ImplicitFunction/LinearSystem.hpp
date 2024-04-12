@@ -100,3 +100,15 @@ template <typename T> void UXCompute(const vector<vector<T>>& U, const vector<T>
         }
     }
 }
+
+template <typename T> void solve(const vector<vector<T>>& A, const vector<T>& B, vector<T>& X, int n) {
+    vector<vector<T>> L(n, vector<T>(n, 0.0f));
+    vector<vector<T>> U(n, vector<T>(n, 0.0f));
+    vector<T> Y(n, 0.0f);
+    // A = L * U
+    lu(A, L, U, n);
+    // L * Y = B
+    LYCompute(L, B, Y, n);
+    // U * X = Y
+    UXCompute(U, Y, X, n);
+}

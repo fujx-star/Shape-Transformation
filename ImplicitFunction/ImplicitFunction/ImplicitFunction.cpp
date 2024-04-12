@@ -11,114 +11,98 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/LU>
+#include <Eigen/Eigen>
 #include <vector>
 
 using namespace std;
 
-float RBF(glm::vec2 x) {
-    float length = glm::length(x);
+float RBF(Eigen::VectorXf x) {
+    float length = x.norm();
     if (length == 0.0f) {
         return 0.0f;
     }
+    
     return glm::pow(length, 2.0f) * glm::log(length);
 }
 
-float interpolationFunction(glm::vec2 x, 
-    const vector<pair<glm::vec2, float>>& constraints,
-    const vector<float>& weights,
-    const vector<float>& P) {
-    float res = 0.0f;
-    for (int i = 0; i < constraints.size(); i++) {
-        res += weights[i] * RBF(x - constraints[i].first);
-    }
-    res += P[0] + P[1] * x.x + P[2] * x.y;
-    return res;
-}
+//float interpolationFunction(Eigen::VectorXf x,
+//    const vector<pair<Eigen::VectorXf, float>>& constraints,
+//    const Eigen::VectorXf& weights,
+//    float P0,
+//    const Eigen::VectorXf& P) {
+//    float res = 0.0f;
+//    for (int i = 0; i < constraints.size(); i++) {
+//        res += weights(i) * RBF(x - constraints[i].first);
+//    }
+//    res += P0;
+//    res += x.dot(P);
+//    return res;
+//}
 
-template <typename T> void swapRow(vector<vector<T>>& A, int i, int j, int n) {
-    vector<T> tmp = A[i];
-    A[i] = A[j];
-    A[j] = tmp;
-}
+int dimensions = 2;
 
 int main()
 {
-
-    vector<pair<glm::vec2, float>> constraints = {
+    vector<pair<Eigen::VectorXf, float>> constraints = {
         // boundary constraints
-        {{1.0f, 1.0f}, 0.0f},
-        {{-1.0f, 1.0f}, 0.0f},
-        {{-1.0f, -1.0f}, 0.0f},
-        {{1.0f, -1.0f}, 0.0f},
+        {Eigen::Vector2f(1.0f, 1.0f), 0.0f},
+        {Eigen::Vector2f(-1.0f, 1.0f), 0.0f},
+        {Eigen::Vector2f(-1.0f, -1.0f), 0.0f},
+        {Eigen::Vector2f(1.0f, -1.0f), 0.0f},
         // noramal  constraints
-        {{0.9f, 0.9f}, 1.0f},
-        {{-0.9f, 0.9f}, 1.0f},
-        {{-0.9f, -0.9f}, 1.0f},
-        {{0.9f, -0.9f}, 1.0f}
+        {Eigen::Vector2f(0.9f, 0.9f), 1.0f},
+        {Eigen::Vector2f(-0.9f, 0.9f), 1.0f},
+        {Eigen::Vector2f(-0.9f, -0.9f), 1.0f},
+        {Eigen::Vector2f(0.9f, -0.9f), 1.0f}
     };
 
     int numConstraints = constraints.size();
-    int n = numConstraints + 3;
-    vector<vector<float>> A(n, vector<float>(n, 0.0f));
-    vector<vector<float>> L(n, vector<float>(n, 0.0f));
-    vector<vector<float>> U(n, vector<float>(n, 0.0f));
-    vector<float> B(n, 0.0f), X(n, 0.0f), Y(n, 0.0f);
+    int n = numConstraints + 1 + dimensions;
+
+    Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n, n);
+    Eigen::VectorXf B = Eigen::VectorXf::Zero(n);
+    Eigen::VectorXf X = Eigen::VectorXf::Zero(n);
 
     for (int i = 0; i < numConstraints; i++) {
         for (int j = 0; j < numConstraints; j++) {
-            A[i][j] = RBF(constraints[i].first - constraints[j].first);
+            A(i, j) = RBF(constraints[i].first - constraints[j].first);
         }
     }
     for (int i = 0; i < numConstraints; i++) {
-        A[i][numConstraints] = 1.0f;
-        A[i][numConstraints + 1] = constraints[i].first.x;
-        A[i][numConstraints + 2] = constraints[i].first.y;
+        A(i, numConstraints) = 1.0f;
+        for (int j = 0; j < dimensions; j++) {
+            A(i, numConstraints + j + 1) = constraints[i].first(j);
+        }
     }
     for (int i = 0; i < numConstraints; i++) {
-        A[numConstraints][i] = 1.0f;
-        A[numConstraints + 1][i] = constraints[i].first.x;
-        A[numConstraints + 2][i] = constraints[i].first.y;
+        A(numConstraints, i) = 1.0f;
+        for (int j = 0; j < dimensions; j++) {
+            A(numConstraints + j + 1, i) = constraints[i].first(j);
+        }
     }
     for (int i = 0; i < n; i++) {
         if (i < numConstraints) {
-            B[i] = constraints[i].second;
+            B(i) = constraints[i].second;
         }
         else {
-            B[i] = 0.0f;
+            B(i) = 0.0f;
         }
     }
-    //output(A, n);
-    Eigen::Matrix4d
 
-    // A = L * U
-    lu(A, L, U, n);
-    output(L, n);
-    output(U, n);
+    cout << "A: " << endl << A << endl;
+    cout << "B: " << endl << B << endl;
 
-    // L * Y = B
-    LYCompute(L, B, Y, n);
-    // U * X = Y
-    UXCompute(U, Y, X, n);
+    X = A.lu().solve(B);
 
-    //vector<float> weights(numConstraints, 0.0f);
-    //for (int i = 0; i < numConstraints; i++) {
-    //    weights[i] = X[i];
-    //}
-    //vector<float> P(n - numConstraints, 0.0f);
-    //for (int i = 0; i < n - numConstraints; i++) {
-    //    P[i] = X[numConstraints + i];
-    //}
+    cout << X << endl;
 
-    
+    Eigen::VectorXf weights = X.head(numConstraints);
+    float P0 = X(numConstraints);
+    Eigen::VectorXf P = X.tail(dimensions);
 
-    for (int i = 0; i < n; i++) {
-        cout << X[i] << " ";
-    }
-
-    //glm::vec3 p = { 0.5f, 0.5f, 0.0f };
-    //cout << RBF(p);
-	
-	return 0;
+    return 0;
 }
 
 

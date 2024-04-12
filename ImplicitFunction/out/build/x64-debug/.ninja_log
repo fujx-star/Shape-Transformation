@@ -1,3 +1,20 @@
 # ninja log v5
-2	1170	7346196595890343	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	61f21d64dc05177b
-1172	1529	7346196599376839	ImplicitFunction/ImplicitFunction.exe	c89860046025589f
+2	150	7346245748536649	build.ninja	dcfcfd65819ace3f
+2	2160	7346245921265292	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+2162	2660	7346245926133229	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+3	2646	7346283022862751	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+2648	5679	7346283044630712	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+4	3061	7346283599249181	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+3062	3559	7346283603717030	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+4	2543	7346283727144265	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+2543	2776	7346283728871086	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+3	4407	7346285415359707	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+4407	4972	7346285420545173	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+3	4302	7346285679238983	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+4303	4669	7346285682531366	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+4	2391	7346308378708772	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+2392	2742	7346308381846611	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+5	2536	7346309977032577	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+2537	2877	7346309979856701	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e
+5	4639	7346310253228602	ImplicitFunction/CMakeFiles/ImplicitFunction.dir/ImplicitFunction.cpp.obj	683e1bf68b199b85
+4640	5068	7346310256993985	ImplicitFunction/ImplicitFunction.exe	d9814b5320bd002e

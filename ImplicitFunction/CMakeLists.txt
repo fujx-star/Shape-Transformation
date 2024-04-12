@@ -11,7 +11,7 @@ endif()
 
 project ("ImplicitFunction")
 
-include_directories("D:/SoftwareInstallation/Dependency/include")
+include_directories("D:/SoftwareInstallation/Dependency/include/")
 include_directories("D:/SoftwareInstallation/imgui-1.90.5")
 include_directories("D:/SoftwareInstallation/eigen-3.4.0")
 
