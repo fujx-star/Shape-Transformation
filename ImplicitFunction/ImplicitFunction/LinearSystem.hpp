@@ -51,7 +51,7 @@ template <typename T> void output(const vector<vector<T>>& x, int n)
     {
         for (j = 0; j < n; j++)
         {
-            cout << x[i][j] << " ";
+            cout << x[i][j] << "\t\t";
         }
         cout << "\n";
     }

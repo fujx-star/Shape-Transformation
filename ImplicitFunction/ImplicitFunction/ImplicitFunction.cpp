@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <Eigen/Dense>
 #include <vector>
 
 using namespace std;
@@ -34,6 +35,12 @@ float interpolationFunction(glm::vec2 x,
     return res;
 }
 
+template <typename T> void swapRow(vector<vector<T>>& A, int i, int j, int n) {
+    vector<T> tmp = A[i];
+    A[i] = A[j];
+    A[j] = tmp;
+}
+
 int main()
 {
 
@@ -51,7 +58,7 @@ int main()
     };
 
     int numConstraints = constraints.size();
-    int n = numConstraints + 1 + 2;
+    int n = numConstraints + 3;
     vector<vector<float>> A(n, vector<float>(n, 0.0f));
     vector<vector<float>> L(n, vector<float>(n, 0.0f));
     vector<vector<float>> U(n, vector<float>(n, 0.0f));
@@ -80,29 +87,27 @@ int main()
             B[i] = 0.0f;
         }
     }
+    //output(A, n);
+    Eigen::Matrix4d
 
     // A = L * U
     lu(A, L, U, n);
+    output(L, n);
+    output(U, n);
+
     // L * Y = B
     LYCompute(L, B, Y, n);
     // U * X = Y
     UXCompute(U, Y, X, n);
 
-    vector<float> weights(numConstraints, 0.0f);
-    for (int i = 0; i < numConstraints; i++) {
-        weights[i] = X[i];
-    }
-    vector<float> P(n - numConstraints, 0.0f);
-    for (int i = 0; i < n - numConstraints; i++) {
-        P[i] = X[numConstraints + i];
-    }
-
-    //A[0][0] = 1.0f;
-    //A[0][1] = 1.0f;
-    //A[1][0] = 2.0f;
-    //A[1][1] = 3.0f;
-    //B[0] = 3.0f;
-    //B[1] = 8.0f;
+    //vector<float> weights(numConstraints, 0.0f);
+    //for (int i = 0; i < numConstraints; i++) {
+    //    weights[i] = X[i];
+    //}
+    //vector<float> P(n - numConstraints, 0.0f);
+    //for (int i = 0; i < n - numConstraints; i++) {
+    //    P[i] = X[numConstraints + i];
+    //}
 
     
 
