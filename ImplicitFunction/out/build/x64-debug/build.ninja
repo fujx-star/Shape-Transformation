@@ -85,6 +85,14 @@ build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj:
   TARGET_COMPILE_PDB = ImplicitFunction\CMakeFiles\ImplicitFunction.dir\
   TARGET_PDB = ImplicitFunction\ImplicitFunction.pdb
 
+build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj: C_COMPILER__ImplicitFunction_unscanned_Debug E$:\Coding\ShapeTransformation\ImplicitFunction\ImplicitFunction\glad.c || cmake_object_order_depends_target_ImplicitFunction
+  FLAGS = /DWIN32 /D_WINDOWS /W3 /MDd /Ob0 /Od /RTC1 -ZI
+  INCLUDES = -ID:\SoftwareInstallation\Dependency\include -ID:\SoftwareInstallation\imgui-1.90.5 -ID:\SoftwareInstallation\eigen-3.4.0
+  OBJECT_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
+  OBJECT_FILE_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
+  TARGET_COMPILE_PDB = ImplicitFunction\CMakeFiles\ImplicitFunction.dir\
+  TARGET_PDB = ImplicitFunction\ImplicitFunction.pdb
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target ImplicitFunction
@@ -93,10 +101,11 @@ build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj:
 #############################################
 # Link the executable ImplicitFunction\ImplicitFunction.exe
 
-build ImplicitFunction\ImplicitFunction.exe: CXX_EXECUTABLE_LINKER__ImplicitFunction_Debug ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj
+build ImplicitFunction\ImplicitFunction.exe: CXX_EXECUTABLE_LINKER__ImplicitFunction_Debug ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj | D$:\SoftwareInstallation\Dependency\lib\glfw3.lib
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Ob0 /Od /RTC1 -ZI
   LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
-  LINK_LIBRARIES = kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
+  LINK_LIBRARIES = D:\SoftwareInstallation\Dependency\lib\glfw3.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
+  LINK_PATH = -LIBPATH:D:\SoftwareInstallation\Dependency\lib
   OBJECT_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   POST_BUILD = cd .
   PRE_LINK = cd .

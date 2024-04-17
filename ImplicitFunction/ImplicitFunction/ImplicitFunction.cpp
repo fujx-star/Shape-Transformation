@@ -2,6 +2,10 @@
 
 #include "ImplicitFunction.h"
 #include "LinearSystem.hpp"
+#include "ConvexHull.hpp"
+#include "Shader.h"
+#include "Camera.h"
+#include "setting.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -15,8 +19,15 @@
 #include <Eigen/LU>
 #include <Eigen/Eigen>
 #include <vector>
-
+#define DIMENSION 3
 using namespace std;
+
+const int dimension = 2;
+
+
+bool isZero(float x) {
+    return abs(x) < 0.1f;
+}
 
 float RBF(Eigen::VectorXf x) {
     float length = x.norm();
@@ -27,24 +38,65 @@ float RBF(Eigen::VectorXf x) {
     return glm::pow(length, 2.0f) * glm::log(length);
 }
 
-//float interpolationFunction(Eigen::VectorXf x,
-//    const vector<pair<Eigen::VectorXf, float>>& constraints,
-//    const Eigen::VectorXf& weights,
-//    float P0,
-//    const Eigen::VectorXf& P) {
-//    float res = 0.0f;
-//    for (int i = 0; i < constraints.size(); i++) {
-//        res += weights(i) * RBF(x - constraints[i].first);
-//    }
-//    res += P0;
-//    res += x.dot(P);
-//    return res;
-//}
+float interpolationFunction(Eigen::VectorXf x,
+    const vector<pair<Eigen::VectorXf, float>>& constraints,
+    const Eigen::VectorXf& weights,
+    float P0,
+    const Eigen::VectorXf& P) {
+    float res = 0.0f;
+    for (int i = 0; i < constraints.size(); i++) {
+        res += weights(i) * RBF(x - constraints[i].first);
+    }
+    res += P0;
+    res += x.dot(P);
+    return res;
+}
 
-int dimensions = 2;
+void solve2D(
+    float xmin, float xmax, float ymin, float ymax, float step,
+    const vector<pair<Eigen::VectorXf, float>>& constraints,
+    const Eigen::VectorXf& weights, float P0, const Eigen::VectorXf& P,
+    std::vector<Eigen::VectorXf>& result)
+{
+    for (float x = xmin; x < xmax; x += step) {
+        for (float y = ymin; y < ymax; y += step) {
+            if (isZero(interpolationFunction(Eigen::Vector2f(x, y), constraints, weights, P0, P))) {
+                result.push_back(Eigen::Vector2f(x, y));
+            }
+        }
+    }
+}
+
 
 int main()
 {
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    //glEnable(GL_DEPTH_TEST);
+
     vector<pair<Eigen::VectorXf, float>> constraints = {
         // boundary constraints
         {Eigen::Vector2f(1.0f, 1.0f), 0.0f},
@@ -59,7 +111,7 @@ int main()
     };
 
     int numConstraints = constraints.size();
-    int n = numConstraints + 1 + dimensions;
+    int n = numConstraints + 1 + dimension;
 
     Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n, n);
     Eigen::VectorXf B = Eigen::VectorXf::Zero(n);
@@ -72,13 +124,13 @@ int main()
     }
     for (int i = 0; i < numConstraints; i++) {
         A(i, numConstraints) = 1.0f;
-        for (int j = 0; j < dimensions; j++) {
+        for (int j = 0; j < dimension; j++) {
             A(i, numConstraints + j + 1) = constraints[i].first(j);
         }
     }
     for (int i = 0; i < numConstraints; i++) {
         A(numConstraints, i) = 1.0f;
-        for (int j = 0; j < dimensions; j++) {
+        for (int j = 0; j < dimension; j++) {
             A(numConstraints + j + 1, i) = constraints[i].first(j);
         }
     }
@@ -91,291 +143,111 @@ int main()
         }
     }
 
-    cout << "A: " << endl << A << endl;
-    cout << "B: " << endl << B << endl;
+    //cout << "A: " << endl << A << endl;
+    //cout << "B: " << endl << B << endl;
 
     X = A.lu().solve(B);
 
-    cout << X << endl;
+    //cout << X << endl;
 
     Eigen::VectorXf weights = X.head(numConstraints);
     float P0 = X(numConstraints);
-    Eigen::VectorXf P = X.tail(dimensions);
+    Eigen::VectorXf P = X.tail(dimension);
 
+    float xmin = -5.0f;
+    float xmax = 5.0f;
+    float ymin = -5.0f;
+    float ymax = 5.0f;
+    float step = 0.1f;
+
+    std::vector<Eigen::VectorXf> points;
+    solve2D(xmin, xmax, ymin, ymax, step, constraints, weights, P0, P, points);
+
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = 0; j < dimension; j++) {
+            std::cout << points[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    vector<float> glPoints;
+    point2DConvertTriangle(points, glPoints);
+    
+    int pointSize = glPoints.size() / dimension  * DIMENSION * sizeof(float);
+    float* pointVertices = (float*)malloc(pointSize);
+    int index = 0;
+    for (int i = 0; i < glPoints.size() / dimension; i++) {
+        for (int j = 0; j < dimension; j++) {
+            pointVertices[index++] = glPoints[i * dimension + j];
+        }
+        for (int j = dimension; j < DIMENSION; j++) {
+            pointVertices[index++] = 0.0f;
+        }
+    }
+    //ConvexHull();
+    int lineSize = points.size() * sizeof(float) * dimension;
+    float* lineVertices = (float*)malloc(lineSize);
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            if (j >= dimension) {
+                lineVertices[i * dimension + j] = 0.0f;
+            }
+            else {
+                lineVertices[i * dimension + j] = points[i][j];
+            }
+        }
+    }
+
+    //int lineSize = 4 * sizeof(float);
+    //float* lineVertices = (float*)malloc(lineSize);
+    //lineVertices[0] = -1.0f;
+    //lineVertices[1] = -1.0f;
+    //lineVertices[2] = 1.0f;
+    //lineVertices[3] = 1.0f;
+
+    Shader pointShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.frag");
+    Shader lineShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.frag");
+
+    unsigned int VBOs[2], VAOs[2];
+    glGenVertexArrays(2, VAOs);
+    glGenBuffers(2, VBOs);
+
+    glBindVertexArray(VAOs[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
+    glBufferData(GL_ARRAY_BUFFER, pointSize, pointVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(VAOs[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
+    glBufferData(GL_ARRAY_BUFFER, lineSize, lineVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    while (!glfwWindowShouldClose(window))
+    {
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        processInput(window);
+
+        pointShader.use();
+        glBindVertexArray(VAOs[0]);
+        glDrawArrays(GL_TRIANGLES, 0, glPoints.size() / dimension);
+
+        lineShader.use();
+        glBindVertexArray(VAOs[1]);
+        glDrawArrays(GL_LINE_LOOP, 0, points.size());
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+    }
+
+    glDeleteVertexArrays(2, VAOs);
+    glDeleteBuffers(2, VBOs);
+    pointShader.Delete();
+    lineShader.Delete();
+
+    glfwTerminate();
     return 0;
 }
-
-
-//#include <glad/glad.h>
-//#include <GLFW/glfw3.h>
-//#include <imgui.h>
-//#include <imgui_impl_glfw.h>
-//#include <imgui_impl_opengl3.h>
-//#include <glm/glm.hpp>
-//#include <glm/gtc/matrix_transform.hpp>
-//#include <glm/gtc/type_ptr.hpp>
-//#include <vector>
-//#include "settings/settings.hpp"
-//#include "settings/Shader.h"
-//#include "tools/Quaternion.hpp"
-//#include "algorithm/Rotate.hpp"
-//#include <iostream>
-//
-////int main() {
-////
-////	glm::vec3 point{ 1,4,6 };
-////	glm::vec3 axis{ 6,7,1 };
-////	double angle = 45;
-////
-////	glm::vec3 result = rotateByMatrix(point, axis, angle);
-////	glm::vec3 result2 = rotateByQuaternion(point, axis, angle);
-////	glm::vec3 result3 = rotateTransform(point, axis, angle);
-////	for (int i = 0; i < 3; i++) {
-////		std::cout << result[i] << " ";
-////	}
-////	std::cout << std::endl;
-////
-////	for (int i = 0; i < 3; i++) {
-////		std::cout << result2[i] << " ";
-////	}
-////	std::cout << std::endl;
-////
-////	for (int i = 0; i < 3; i++) {
-////		std::cout << result3[i] << " ";
-////	}
-////	std::cout << std::endl;
-////
-////	return 0;
-////
-////}
-//
-//struct Point {
-//    glm::vec3 position;
-//    glm::vec3 normal;
-//};
-//glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-//
-//int main()
-//{
-//    glfwInit();
-//    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-//
-//    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-//    if (window == NULL)
-//    {
-//        std::cout << "Failed to create GLFW window" << std::endl;
-//        glfwTerminate();
-//        return -1;
-//    }
-//
-//    glfwMakeContextCurrent(window);
-//    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-//    glfwSetCursorPosCallback(window, mouse_callback);
-//    glfwSetScrollCallback(window, scroll_callback);
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-//
-//    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-//    {
-//        std::cout << "Failed to initialize GLAD" << std::endl;
-//        return -1;
-//    }
-//
-//    glEnable(GL_DEPTH_TEST);
-//
-//    IMGUI_CHECKVERSION();
-//    ImGui::CreateContext();
-//    ImGuiIO& io = ImGui::GetIO();
-//    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-//    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-//
-//    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
-//    ImGui_ImplOpenGL3_Init();
-//
-//
-//    Shader objectShader("resources/quaternion/Object.vert", "resources/quaternion/Object.frag");
-//    Shader lightShader("resources/quaternion/Light.vert", "resources/quaternion/Light.frag");
-//
-//    std::vector<Point> points = {
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//        Point{glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//        Point{glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//        Point{glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f,  0.0f, -1.0f)},
-//
-//        Point{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//        Point{glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f,  0.0f,  1.0f)},
-//
-//        Point{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(-1.0f,  0.0f,  0.0f)},
-//
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(1.0f,  0.0f,  0.0f)},
-//
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f,  0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.0f, -1.0f,  0.0f)},
-//
-//        Point{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  1.0f,  0.0f)},
-//        Point{glm::vec3(0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  1.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f,  0.5f), glm::vec3(0.0f,  1.0f,  0.0f)},
-//        Point{glm::vec3(-0.5f,  0.5f, -0.5f), glm::vec3(0.0f,  1.0f,  0.0f)}
-//    };
-//
-//    float lightVertices[108];
-//    int index = 0;
-//    for (const auto& point : points) {
-//        lightVertices[index++] = point.position.x;
-//        lightVertices[index++] = point.position.y;
-//        lightVertices[index++] = point.position.z;
-//    }
-//
-//    unsigned int objectVBO, objectVAO;
-//    glGenVertexArrays(1, &objectVAO);
-//    glGenBuffers(1, &objectVBO);
-//
-//    unsigned int lightVBO, lightVAO;
-//    glGenVertexArrays(1, &lightVAO);
-//    glGenBuffers(1, &lightVBO);
-//
-//    while (!glfwWindowShouldClose(window))
-//    {
-//        float currentFrame = static_cast<float>(glfwGetTime());
-//        deltaTime = currentFrame - lastFrame;
-//        lastFrame = currentFrame;
-//
-//        ImGui_ImplOpenGL3_NewFrame();
-//        ImGui_ImplGlfw_NewFrame();
-//        ImGui::NewFrame();
-//        ImGui::Begin("window!");
-//        ImGui::Text("helloworld.");
-//
-//        static float angle = 0.0f;
-//        static glm::vec3 axis = glm::vec3(0.0f, 0.0f, 0.0f);
-//        ImGui::InputFloat("input axis-x", &axis.x, 0.05f, 1.0f, "%.3f");
-//        ImGui::InputFloat("input axis-y", &axis.y, 0.05f, 1.0f, "%.3f");
-//        ImGui::InputFloat("input axis-z", &axis.z, 0.05f, 1.0f, "%.3f");
-//        ImGui::InputFloat("input angle", &angle, 1.0f, 1.0f, "%.1f");
-//        if (ImGui::Button("Rotate")) {
-//            for (auto& point : points) {
-//                point.position = rotateByQuaternion(point.position, axis, angle);
-//                point.normal = rotateByQuaternion(point.normal, axis, angle);
-//            }
-//        }
-//        ImGui::SameLine();
-//        ImGui::End();
-//
-//        processInput(window);
-//
-//
-//        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//
-//        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-//        glClear(GL_COLOR_BUFFER_BIT);
-//
-//        // draw object
-//        objectShader.use();
-//
-//        objectShader.setVec3f("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
-//        objectShader.setVec3f("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-//        objectShader.setVec3f("lightPos", lightPos);
-//        objectShader.setVec3f("viewPos", camera.Position);
-//
-//        glm::mat4 model = glm::mat4(1.0f);
-//        glm::mat4 view = glm::mat4(1.0f);
-//        glm::mat4 projection = glm::mat4(1.0f);
-//        view = camera.GetViewMatrix();
-//        projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-//
-//        objectShader.setMat4f("model", model);
-//        objectShader.setMat4f("view", view);
-//        objectShader.setMat4f("projection", projection);
-//
-//        int verticesSize = points.size() * 6 * sizeof(float);
-//        float* vertices = (float*)malloc(verticesSize);
-//        for (int i = 0; i < points.size(); i++) {
-//            vertices[i * 6 + 0] = points[i].position.x;
-//            vertices[i * 6 + 1] = points[i].position.y;
-//            vertices[i * 6 + 2] = points[i].position.z;
-//            vertices[i * 6 + 3] = points[i].normal.x;
-//            vertices[i * 6 + 4] = points[i].normal.y;
-//            vertices[i * 6 + 5] = points[i].normal.z;
-//        }
-//
-//        glBindVertexArray(objectVAO);
-//
-//        glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
-//        glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_DYNAMIC_DRAW);
-//
-//        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-//        glEnableVertexAttribArray(0);
-//
-//        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-//        glEnableVertexAttribArray(1);
-//
-//        glDrawArrays(GL_TRIANGLES, 0, 36);
-//
-//
-//        // draw light
-//        lightShader.use();
-//
-//        model = glm::mat4(1.0f);
-//        model = glm::translate(model, lightPos);
-//        model = glm::scale(model, glm::vec3(0.2f));
-//        lightShader.setMat4f("model", model);
-//        lightShader.setMat4f("projection", projection);
-//        lightShader.setMat4f("view", view);
-//
-//        glBindVertexArray(lightVAO);
-//
-//        glBindBuffer(GL_ARRAY_BUFFER, lightVBO);
-//        glBufferData(GL_ARRAY_BUFFER, 108 * sizeof(float), lightVertices, GL_STATIC_DRAW);
-//
-//        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-//        glEnableVertexAttribArray(0);
-//
-//        glDrawArrays(GL_TRIANGLES, 0, 36);
-//
-//        ImGui::Render();
-//        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-//
-//        glfwSwapBuffers(window);
-//        glfwPollEvents();
-//
-//        free(vertices);
-//    }
-//
-//    glDeleteVertexArrays(1, &objectVAO);
-//    glDeleteBuffers(1, &objectVBO);
-//    glDeleteVertexArrays(1, &lightVAO);
-//    glDeleteBuffers(1, &lightVBO);
-//    objectShader.Delete();
-//    lightShader.Delete();
-//
-//    ImGui_ImplOpenGL3_Shutdown();
-//    ImGui_ImplGlfw_Shutdown();
-//    ImGui::DestroyContext();
-//
-//    glfwTerminate();
-//    return 0;
-//}

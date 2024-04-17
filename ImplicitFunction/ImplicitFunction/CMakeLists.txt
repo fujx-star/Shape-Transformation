@@ -3,7 +3,7 @@
 #
 
 # 将源代码添加到此项目的可执行文件。
-add_executable (ImplicitFunction "ImplicitFunction.cpp" "ImplicitFunction.h" "LinearSystem.hpp" )
+add_executable (ImplicitFunction "ImplicitFunction.cpp" "ImplicitFunction.h" "LinearSystem.hpp" "ConvexHull.hpp" "Camera.h" "Shader.h" "setting.hpp" "glad.c" "Point.vert" "Point.frag" "Line.vert" "Line.frag")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ImplicitFunction PROPERTY CXX_STANDARD 20)

@@ -1,3 +1,6 @@
+#ifndef __LINEARSYSTEM_HPP__
+#define __LINEARSYSTEM_HPP__
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -112,3 +115,5 @@ template <typename T> void solve(const vector<vector<T>>& A, const vector<T>& B,
     // U * X = Y
     UXCompute(U, Y, X, n);
 }
+
+#endif
