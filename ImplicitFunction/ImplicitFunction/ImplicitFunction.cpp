@@ -20,7 +20,7 @@
 #include <Eigen/Eigen>
 #include <vector>
 #define DIMENSION 3
-#define DEBUG
+//#define DEBUG
 
 bool isZero(float x) {
     return abs(x) < 0.1f;
@@ -118,7 +118,6 @@ int main()
     Eigen::VectorXf B = Eigen::VectorXf::Zero(n);
     Eigen::VectorXf X = Eigen::VectorXf::Zero(n);
 
-#ifdef DEBUG
     for (int i = 0; i < numConstraints; i++) {
         for (int j = 0; j < numConstraints; j++) {
             A(i, j) = RBF(constraints[i].first - constraints[j].first);
@@ -144,7 +143,6 @@ int main()
             B(i) = 0.0f;
         }
     }
-#endif // DEBUG
 
     X = A.lu().solve(B);
 
@@ -158,10 +156,10 @@ int main()
     float P0 = X(numConstraints);
     Eigen::Vector3f P = X.tail(DIMENSION);
 
-    float xmin = -5.0f;
-    float xmax = 5.0f;
-    float ymin = -5.0f;
-    float ymax = 5.0f;
+    float xmin = -3.0f;
+    float xmax = 3.0f;
+    float ymin = -3.0f;
+    float ymax = 3.0f;
     float zmin = 0.0f;
     float zmax = 0.0f;
     float step = 0.02f;
@@ -191,6 +189,7 @@ int main()
         }
     }
 
+#ifdef DEBUG
     // 验证数据
     std::cout << "---------------points---------------" << points.size() << std::endl;
     for (int i = 0; i < points.size(); i++) {
@@ -213,46 +212,7 @@ int main()
         }
         std::cout << std::endl;
     }
-    
-
-    float vertices[] = {
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-     0.5f,  0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f
-    };
+#endif // DEBUG
 
     Shader pointShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.frag");
     Shader lineShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.frag");
@@ -264,9 +224,7 @@ int main()
     glBindVertexArray(VAOs[0]);
     glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
     glBufferData(GL_ARRAY_BUFFER, actualPointSize, actualPointVertices, GL_STATIC_DRAW);
-    //glBufferData(GL_ARRAY_BUFFER, 108 * sizeof(float), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
-    //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     glBindVertexArray(VAOs[1]);
