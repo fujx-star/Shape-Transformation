@@ -77,9 +77,9 @@ build rebuild_cache: phony CMakeFiles\rebuild_cache.util
 
 build cmake_object_order_depends_target_ImplicitFunction: phony || ImplicitFunction\CMakeFiles\ImplicitFunction.dir
 
-build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj: CXX_COMPILER__ImplicitFunction_unscanned_Debug E$:\Coding\ShapeTransformation\ImplicitFunction\ImplicitFunction\ImplicitFunction.cpp || cmake_object_order_depends_target_ImplicitFunction
+build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\main.cpp.obj: CXX_COMPILER__ImplicitFunction_unscanned_Debug E$:\Coding\ShapeTransformation\ImplicitFunction\ImplicitFunction\main.cpp || cmake_object_order_depends_target_ImplicitFunction
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Ob0 /Od /RTC1 -std:c++20 -ZI
-  INCLUDES = -ID:\SoftwareInstallation\Dependency\include -ID:\SoftwareInstallation\imgui-1.90.5 -ID:\SoftwareInstallation\eigen-3.4.0
+  INCLUDES = -ID:\SoftwareInstallation\Dependency\include -ID:\SoftwareInstallation\imgui-1.90.5 -ID:\SoftwareInstallation\opencv\build\include -ID:\SoftwareInstallation\eigen-3.4.0
   OBJECT_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   OBJECT_FILE_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   TARGET_COMPILE_PDB = ImplicitFunction\CMakeFiles\ImplicitFunction.dir\
@@ -87,7 +87,7 @@ build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj:
 
 build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj: C_COMPILER__ImplicitFunction_unscanned_Debug E$:\Coding\ShapeTransformation\ImplicitFunction\ImplicitFunction\glad.c || cmake_object_order_depends_target_ImplicitFunction
   FLAGS = /DWIN32 /D_WINDOWS /W3 /MDd /Ob0 /Od /RTC1 -ZI
-  INCLUDES = -ID:\SoftwareInstallation\Dependency\include -ID:\SoftwareInstallation\imgui-1.90.5 -ID:\SoftwareInstallation\eigen-3.4.0
+  INCLUDES = -ID:\SoftwareInstallation\Dependency\include -ID:\SoftwareInstallation\imgui-1.90.5 -ID:\SoftwareInstallation\opencv\build\include -ID:\SoftwareInstallation\eigen-3.4.0
   OBJECT_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   OBJECT_FILE_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   TARGET_COMPILE_PDB = ImplicitFunction\CMakeFiles\ImplicitFunction.dir\
@@ -101,11 +101,11 @@ build ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj: C_COMPILER__I
 #############################################
 # Link the executable ImplicitFunction\ImplicitFunction.exe
 
-build ImplicitFunction\ImplicitFunction.exe: CXX_EXECUTABLE_LINKER__ImplicitFunction_Debug ImplicitFunction\CMakeFiles\ImplicitFunction.dir\ImplicitFunction.cpp.obj ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj | D$:\SoftwareInstallation\Dependency\lib\glfw3.lib
+build ImplicitFunction\ImplicitFunction.exe: CXX_EXECUTABLE_LINKER__ImplicitFunction_Debug ImplicitFunction\CMakeFiles\ImplicitFunction.dir\main.cpp.obj ImplicitFunction\CMakeFiles\ImplicitFunction.dir\glad.c.obj
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MDd /Ob0 /Od /RTC1 -ZI
   LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
-  LINK_LIBRARIES = D:\SoftwareInstallation\Dependency\lib\glfw3.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
-  LINK_PATH = -LIBPATH:D:\SoftwareInstallation\Dependency\lib
+  LINK_LIBRARIES = glfw3.lib  opencv_world480d.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
+  LINK_PATH = -LIBPATH:D:\SoftwareInstallation\Dependency\lib   -LIBPATH:D:\SoftwareInstallation\opencv\build\x64\vc16\lib
   OBJECT_DIR = ImplicitFunction\CMakeFiles\ImplicitFunction.dir
   POST_BUILD = cd .
   PRE_LINK = cd .

@@ -12,10 +12,14 @@ endif()
 project ("ImplicitFunction")
 
 include_directories("D:/SoftwareInstallation/Dependency/include/")
-include_directories("D:/SoftwareInstallation/imgui-1.90.5")
-include_directories("D:/SoftwareInstallation/eigen-3.4.0")
+include_directories("D:/SoftwareInstallation/imgui-1.90.5/")
+include_directories("D:/SoftwareInstallation/opencv/build/include")
+include_directories("D:/SoftwareInstallation/eigen-3.4.0/")
+
 link_directories("D:/SoftwareInstallation/Dependency/lib/")
-link_libraries("D:/SoftwareInstallation/Dependency/lib/glfw3.lib")
+link_directories("D:/SoftwareInstallation/opencv/build/x64/vc16/lib/")
+link_libraries("glfw3.lib")
+link_libraries("opencv_world480d.lib")
 
 add_subdirectory ("ImplicitFunction")
 

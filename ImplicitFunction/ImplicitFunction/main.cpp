@@ -1,7 +1,8 @@
 ﻿// ImplicitFunction.cpp: 定义应用程序的入口点。
 
-#include "ImplicitFunction.h"
+#include "algorithm/ImplicitFunction.hpp"
 #include "algorithm/ConvexHull.hpp"
+#include "algorithm/ImageProcess.hpp"
 #include "settings/Shader.h"
 #include "settings/Camera.h"
 #include "settings/setting.hpp"
@@ -17,59 +18,70 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <Eigen/Eigen>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/utils/logger.hpp>
 #include <vector>
 #define DIMENSION 3
+#define MAX_MATRIX_DIMENSION 200
 #define DEBUGx
 
-bool isZero(float x) {
-    return abs(x) < 0.1f;
-}
+typedef struct Color {
+    int b;
+    int g;
+    int r;
+} Color;
 
-float RBF(Eigen::Vector3f x) {
-    float length = x.norm();
-    if (length == 0.0f) {
-        return 0.0f;
-    }
-    
-    return glm::pow(length, 2.0f) * glm::log(length);
-}
+//bool processImage(const char* inputImagePath, std::vector<Eigen::Vector2f> borderPoints) {
+//    cv::Mat inputImage = cv::imread(inputImagePath);
+//    if (inputImage.empty())
+//    {
+//        cout << "open inputImage failed" << endl;
+//        return false;
+//    }
+//
+//    int rows = inputImage.rows;
+//    int cols = inputImage.cols;
+//
+//    for (int i = 0; i < rows - 1; i++) {
+//        for (int j = 0; j < cols - 1; j++) {
+//            Color curColor = { inputImage.at<cv::Vec3b>(i, j)[0], inputImage.at<cv::Vec3b>(i, j)[1], inputImage.at<cv::Vec3b>(i, j)[2] };
+//            Color rightColor = { inputImage.at<cv::Vec3b>(i, j + 1)[0], inputImage.at<cv::Vec3b>(i, j + 1)[1], inputImage.at<cv::Vec3b>(i, j + 1)[2] };
+//            Color lowColor = { inputImage.at<cv::Vec3b>(i + 1, j)[0], inputImage.at<cv::Vec3b>(i + 1, j)[1], inputImage.at<cv::Vec3b>(i + 1, j)[2] };
+//            auto isBorder = [](const Color& c1, const Color& c2) {
+//                return c1.r > c2.r && c1.g > c2.g && c1.b > c2.b;
+//            };
+//            if (isBorder(curColor, rightColor)) {
+//                borderPoints.emplace_back(Eigen::Vector2f(i + 0.5, j));
+//            }
+//            if (isBorder(curColor, lowColor)) {
+//                borderPoints.emplace_back(Eigen::Vector2f(i, j + 0.5));
+//            }
+//        }
+//    }
+//    return true;
+//}
 
-float interpolationFunction(Eigen::Vector3f x,
-    const vector<pair<Eigen::Vector3f, float>>& constraints,
-    const Eigen::VectorXf& weights,
-    float P0,
-    const Eigen::Vector3f& P) {
-    float res = 0.0f;
-    for (int i = 0; i < constraints.size(); i++) {
-        res += weights(i) * RBF(x - constraints[i].first);
-    }
-    res += P0;
-    res += x.dot(P);
-    return res;
-}
-
-void solve(
-    float xmin, float xmax, float ymin, float ymax, float zmin, float zmax, float step,
-    const vector<pair<Eigen::Vector3f, float>>& constraints,
-    const Eigen::VectorXf& weights, float P0, const Eigen::Vector3f& P,
-    std::vector<Eigen::Vector3f>& result)
+void generateContraints(
+    const char* imagePath,
+    std::vector<pair<Eigen::Vector3f, float>>& constraints) 
 {
-#pragma omp parallel
-    for (float x = xmin; x <= xmax; x += step) {
-        for (float y = ymin; y <= ymax; y += step) {
-            for (float z = zmin; z <= zmax; z += step) {
-                if (isZero(interpolationFunction(Eigen::Vector3f(x, y, z), constraints, weights, P0, P))) {
-                    result.push_back(Eigen::Vector3f(x, y, z));
-                }
-            }
-            
-        }
+    std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
+    processImage(imagePath, boundaryPoints, normalPoints);
+    for (const auto& point : boundaryPoints) {
+        constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 0.0f);
+    }
+    for (const auto& point : normalPoints) {
+        constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 1.0f);
     }
 }
 
 
 int main()
 {
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -97,21 +109,27 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
-    vector<pair<Eigen::Vector3f, float>> constraints = {
-        // boundary constraints
-        {Eigen::Vector3f(1.0f, 1.0f, 0.0f), 0.0f},
-        {Eigen::Vector3f(-1.0f, 1.0f, 0.0f), 0.0f},
-        {Eigen::Vector3f(-1.0f, -1.0f, 0.0f), 0.0f},
-        {Eigen::Vector3f(1.0f, -1.0f, 0.0f), 0.0f},
-        // noramal  constraints
-        {Eigen::Vector3f(0.9f, 0.9f, 0.0f), 1.0f},
-        {Eigen::Vector3f(-0.9f, 0.9f, 0.0f), 1.0f},
-        {Eigen::Vector3f(-0.9f, -0.9f, 0.0f), 1.0f},
-        {Eigen::Vector3f(0.9f, -0.9f, 0.0f), 1.0f}
-    };
+    //vector<pair<Eigen::Vector3f, float>> constraints = {
+    //    // boundary constraints
+    //    {Eigen::Vector3f(1.0f, 1.0f, 0.0f), 0.0f},
+    //    {Eigen::Vector3f(-1.0f, 1.0f, 0.0f), 0.0f},
+    //    {Eigen::Vector3f(-1.0f, -1.0f, 0.0f), 0.0f},
+    //    {Eigen::Vector3f(1.0f, -1.0f, 0.0f), 0.0f},
+    //    // noramal  constraints
+    //    {Eigen::Vector3f(0.9f, 0.9f, 0.0f), 1.0f},
+    //    {Eigen::Vector3f(-0.9f, 0.9f, 0.0f), 1.0f},
+    //    {Eigen::Vector3f(-0.9f, -0.9f, 0.0f), 1.0f},
+    //    {Eigen::Vector3f(0.9f, -0.9f, 0.0f), 1.0f}
+    //};
+    std::vector<std::pair<Eigen::Vector3f, float>> constraints;
+    generateContraints("C:/Users/Administrator/Desktop/无标题.png", constraints);
 
     int numConstraints = constraints.size();
     int n = numConstraints + DIMENSION + 1;
+    if (n > MAX_MATRIX_DIMENSION) {
+        std::cout << "Too many constraints!" << std::endl;
+        return -1;
+    }
 
     Eigen::MatrixXf A = Eigen::MatrixXf::Zero(n, n);
     Eigen::VectorXf B = Eigen::VectorXf::Zero(n);
@@ -155,16 +173,16 @@ int main()
     float P0 = X(numConstraints);
     Eigen::Vector3f P = X.tail(DIMENSION);
 
-    float xmin = -3.0f;
-    float xmax = 3.0f;
-    float ymin = -3.0f;
-    float ymax = 3.0f;
-    float zmin = 0.0f;
-    float zmax = 0.0f;
-    float step = 0.02f;
+    //float xmin = -3.0f;
+    //float xmax = 3.0f;
+    //float ymin = -3.0f;
+    //float ymax = 3.0f;
+    //float zmin = 0.0f;
+    //float zmax = 0.0f;
+    //float step = 0.02f;
 
     std::vector<Eigen::Vector3f> points;
-    solve(xmin, xmax, ymin, ymax, zmin, zmax, step, constraints, weights, P0, P, points);
+    solveImplicitEquation(constraints, weights, P0, P, points);
 
     std::vector<Eigen::Vector3f> linePoints;
     ConvexHull(points, linePoints);

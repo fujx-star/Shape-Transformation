@@ -5,11 +5,12 @@
 # 将源代码添加到此项目的可执行文件。
 add_executable (
 	ImplicitFunction 
-	"ImplicitFunction.cpp" 
-	"ImplicitFunction.h" 
+	"main.cpp" 
+	 
 	"glad.c" 
 	"algorithm/LinearSystem.hpp" 
 	"algorithm/ConvexHull.hpp" 
+	"algorithm/ImageProcess.hpp"
 	"settings/Camera.h" 
 	"settings/Shader.h" 
 	"settings/setting.hpp" 

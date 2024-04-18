@@ -1,5 +1,5 @@
-#ifndef __LINEARSYSTEM_HPP__
-#define __LINEARSYSTEM_HPP__
+#ifndef __LINEAR_SYSTEM_HPP__
+#define __LINEAR_SYSTEM_HPP__
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -9,9 +9,7 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <vector>
 
-using namespace std;
-
-template <typename T> void lu(const vector<vector<T>>& a, vector<vector<T>>& l, vector<vector<T>>& u, int n)
+template <typename T> void lu(const std::vector<std::vector<T>>& a, std::vector<std::vector<T>>& l, vector<vector<T>>& u, int n)
 {
     int i = 0, j = 0, k = 0;
     for (i = 0; i < n; i++)
@@ -47,31 +45,31 @@ template <typename T> void lu(const vector<vector<T>>& a, vector<vector<T>>& l, 
     }
 }
 
-template <typename T> void output(const vector<vector<T>>& x, int n)
+template <typename T> void output(const std::vector<std::vector<T>>& x, int n)
 {
     int i = 0, j = 0;
     for (i = 0; i < n; i++)
     {
         for (j = 0; j < n; j++)
         {
-            cout << x[i][j] << "\t\t";
+            std::cout << x[i][j] << "\t\t";
         }
-        cout << "\n";
+        std::cout << "\n";
     }
 }
 
-template <typename T> void output2(const vector<T>& x, int n)
+template <typename T> void output2(const std::vector<T>& x, int n)
 {
     int i = 0;
     for (i = 0; i < n; i++)
     {
-        cout << x[i];
+        std::cout << x[i];
 
-        cout << "\n";
+        std::cout << "\n";
     }
 }
 
-template <typename T> void LYCompute(const vector<vector<T>> L, const vector<T>& B, vector<T>& Y, int n)
+template <typename T> void LYCompute(const std::vector<std::vector<T>> L, const std::vector<T>& B, std::vector<T>& Y, int n)
 {
     for (int i = 0; i < n; i++)
     {
@@ -88,7 +86,7 @@ template <typename T> void LYCompute(const vector<vector<T>> L, const vector<T>&
 
 }
 
-template <typename T> void UXCompute(const vector<vector<T>>& U, const vector<T>& Y, vector<T>& X, int n)
+template <typename T> void UXCompute(const std::vector<std::vector<T>>& U, const std::vector<T>& Y, std::vector<T>& X, int n)
 {
     for (int i = n - 1; i >= 0; i--) {
         if (i == (n - 1))
@@ -104,7 +102,7 @@ template <typename T> void UXCompute(const vector<vector<T>>& U, const vector<T>
     }
 }
 
-template <typename T> void solve(const vector<vector<T>>& A, const vector<T>& B, vector<T>& X, int n) {
+template <typename T> void solve(const std::vector<std::vector<T>>& A, const std::vector<T>& B, std::vector<T>& X, int n) {
     vector<vector<T>> L(n, vector<T>(n, 0.0f));
     vector<vector<T>> U(n, vector<T>(n, 0.0f));
     vector<T> Y(n, 0.0f);
