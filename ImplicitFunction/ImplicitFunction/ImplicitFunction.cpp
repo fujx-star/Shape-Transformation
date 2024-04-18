@@ -19,7 +19,7 @@
 #include <Eigen/Eigen>
 #include <vector>
 #define DIMENSION 3
-//#define DEBUG
+#define DEBUGx
 
 bool isZero(float x) {
     return abs(x) < 0.1f;
