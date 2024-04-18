@@ -1,11 +1,10 @@
 ﻿// ImplicitFunction.cpp: 定义应用程序的入口点。
 
 #include "ImplicitFunction.h"
-#include "LinearSystem.hpp"
-#include "ConvexHull.hpp"
-#include "Shader.h"
-#include "Camera.h"
-#include "setting.hpp"
+#include "algorithm/ConvexHull.hpp"
+#include "settings/Shader.h"
+#include "settings/Camera.h"
+#include "settings/setting.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -214,8 +213,8 @@ int main()
     }
 #endif // DEBUG
 
-    Shader pointShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Point.frag");
-    Shader lineShader("E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.vert", "E:/Coding/ShapeTransformation/ImplicitFunction/ImplicitFunction/Line.frag");
+    Shader pointShader("../../../../ImplicitFunction/resources/Point.vert", "../../../../ImplicitFunction/resources/Point.frag");
+    Shader lineShader("../../../../ImplicitFunction/resources/Line.vert", "../../../../ImplicitFunction/resources/Line.frag");
 
     unsigned int VBOs[2], VAOs[2];
     glGenVertexArrays(2, VAOs);

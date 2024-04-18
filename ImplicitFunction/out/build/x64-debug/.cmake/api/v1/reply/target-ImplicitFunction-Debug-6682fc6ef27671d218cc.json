@@ -64,7 +64,7 @@
 			{
 				"command" : 3,
 				"file" : 0,
-				"line" : 9,
+				"line" : 22,
 				"parent" : 0
 			}
 		]
@@ -132,7 +132,7 @@
 			"language" : "C",
 			"sourceIndexes" : 
 			[
-				7
+				2
 			]
 		}
 	],
@@ -180,7 +180,7 @@
 			"sourceIndexes" : 
 			[
 				0,
-				7
+				2
 			]
 		},
 		{
@@ -188,11 +188,11 @@
 			"sourceIndexes" : 
 			[
 				1,
-				2,
 				3,
 				4,
 				5,
-				6
+				6,
+				7
 			]
 		},
 		{
@@ -221,53 +221,53 @@
 		},
 		{
 			"backtrace" : 1,
-			"path" : "ImplicitFunction/LinearSystem.hpp",
-			"sourceGroupIndex" : 1
-		},
-		{
-			"backtrace" : 1,
-			"path" : "ImplicitFunction/ConvexHull.hpp",
-			"sourceGroupIndex" : 1
-		},
-		{
-			"backtrace" : 1,
-			"path" : "ImplicitFunction/Camera.h",
-			"sourceGroupIndex" : 1
-		},
-		{
-			"backtrace" : 1,
-			"path" : "ImplicitFunction/Shader.h",
-			"sourceGroupIndex" : 1
-		},
-		{
-			"backtrace" : 1,
-			"path" : "ImplicitFunction/setting.hpp",
-			"sourceGroupIndex" : 1
-		},
-		{
-			"backtrace" : 1,
 			"compileGroupIndex" : 1,
 			"path" : "ImplicitFunction/glad.c",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
-			"path" : "ImplicitFunction/Point.vert",
+			"path" : "ImplicitFunction/algorithm/LinearSystem.hpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "ImplicitFunction/algorithm/ConvexHull.hpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "ImplicitFunction/settings/Camera.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "ImplicitFunction/settings/Shader.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "ImplicitFunction/settings/setting.hpp",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "ImplicitFunction/resources/Point.vert",
 			"sourceGroupIndex" : 2
 		},
 		{
 			"backtrace" : 1,
-			"path" : "ImplicitFunction/Point.frag",
+			"path" : "ImplicitFunction/resources/Point.frag",
 			"sourceGroupIndex" : 2
 		},
 		{
 			"backtrace" : 1,
-			"path" : "ImplicitFunction/Line.vert",
+			"path" : "ImplicitFunction/resources/Line.vert",
 			"sourceGroupIndex" : 2
 		},
 		{
 			"backtrace" : 1,
-			"path" : "ImplicitFunction/Line.frag",
+			"path" : "ImplicitFunction/resources/Line.frag",
 			"sourceGroupIndex" : 2
 		}
 	],
