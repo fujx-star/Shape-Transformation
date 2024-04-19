@@ -32,7 +32,7 @@ float RBF(Eigen::Vector3f x) {
     return glm::pow(length, 2.0f) * glm::log(length);
 }
 
-float interpolationFunction(Eigen::Vector3f x,
+float implicitFunctionValue(Eigen::Vector3f x,
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights,
     float P0,
@@ -46,27 +46,16 @@ float interpolationFunction(Eigen::Vector3f x,
     return res;
 }
 
-void solveImplicitEquation(
-    /*float xmin, float xmax, float ymin, float ymax, float zmin, float zmax, float step,*/
+void getZeroPoints(
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights, float P0, const Eigen::Vector3f& P,
     std::vector<Eigen::Vector3f>& result)
 {
 #pragma omp parallel
-    //for (float x = xmin; x <= xmax; x += step) {
-    //    for (float y = ymin; y <= ymax; y += step) {
-    //        for (float z = zmin; z <= zmax; z += step) {
-    //            if (isZero(interpolationFunction(Eigen::Vector3f(x, y, z), constraints, weights, P0, P))) {
-    //                result.push_back(Eigen::Vector3f(x, y, z));
-    //            }
-    //        }
-    //        
-    //    }
-    //}
     for (float x = X_MIN; x <= X_MAX; x += X_STEP) {
         for (float y = Y_MIN; y <= Y_MAX; y += Y_STEP) {
             for (float z = Z_MIN; z <= Z_MAX; z += Z_STEP) {
-                if (isZero(interpolationFunction(Eigen::Vector3f(x, y, z), constraints, weights, P0, P))) {
+                if (isZero(implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints, weights, P0, P))) {
                     result.push_back(Eigen::Vector3f(x, y, z));
                 }
             }
