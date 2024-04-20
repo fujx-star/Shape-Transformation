@@ -46,7 +46,7 @@ float implicitFunctionValue(Eigen::Vector3f x,
     return res;
 }
 
-void getZeroPoints(
+void getZeroValuePoints(
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights, float P0, const Eigen::Vector3f& P,
     std::vector<Eigen::Vector3f>& result)

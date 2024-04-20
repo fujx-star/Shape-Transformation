@@ -25,6 +25,7 @@
 #include <vector>
 #define DIMENSION 3
 #define MAX_MATRIX_DIMENSION 200
+#define DEBUGx
 
 typedef struct Color {
     int b;
@@ -67,7 +68,7 @@ void generateContraints(
     std::vector<pair<Eigen::Vector3f, float>>& constraints) 
 {
     std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
-    processImage1(imagePath, boundaryPoints, normalPoints);
+    processImage3(imagePath, boundaryPoints, normalPoints);
     for (const auto& point : boundaryPoints) {
         constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 0.0f);
     }
@@ -181,7 +182,7 @@ int main()
     //float step = 0.02f;
 
     std::vector<Eigen::Vector3f> points;
-    getZeroPoints(constraints, weights, P0, P, points);
+    getZeroValuePoints(constraints, weights, P0, P, points);
 
     std::vector<Eigen::Vector3f> linePoints;
     ConvexHull(points, linePoints);
