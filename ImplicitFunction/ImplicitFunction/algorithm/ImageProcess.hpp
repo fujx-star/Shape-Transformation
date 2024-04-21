@@ -11,7 +11,8 @@
 #define LOW_THRESHOLD 100
 #define HIGH_THRESHOLD 200
 #define APERTURE_SIZE 3
-#define SAMPLE_NUM 30
+#define SAMPLE_NUM 50
+#define OFFSET 30.0
 
 #define X_MIN -3.0
 #define X_MAX 3.0
@@ -25,7 +26,6 @@
 
 #define IMAGE_DEBUG
 
-
 void scalePoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints, int rows, int cols) {
 	for (const auto& cvPoint : cvPoints) {
 		float x = static_cast<float>(cvPoint.x);
@@ -33,7 +33,6 @@ void scalePoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vect
 		eigenPoints.emplace_back(Eigen::Vector2f(x / cols * X_SPAN + X_MIN, y / rows * Y_SPAN + Y_MIN));
 	}
 }
-
 
 // 图像处理函数1：用opencv提取外轮廓和内轮廓并逼近，分别得到边界约束点和法向约束点
 void processImage1(const char* imagePath,
@@ -102,16 +101,31 @@ void processImage1(const char* imagePath,
 
 // 角平分线法求法向量
 void normalWithoutWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
-	cv::Vec2f v1 = cv::Vec2f(post.x - cur.x, post.y - cur.y);
-	cv::Vec2f v2 = cv::Vec2f(pre.x - cur.x, pre.y - cur.y);
-	normal = cv::normalize(cv::normalize(v1) + cv::normalize(v2));
+	// 用int避免浮点数精度问题
+	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
+	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
+	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
+	// Vec2i和Vec2f的normalize逻辑不同，需要先转换为Vec2f
+	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
+		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
+	}
+	else {
+		normal = cv::normalize(cv::normalize(cv::Vec2f(v1)) + cv::normalize(cv::Vec2f(v2)));
+	}
 }
 
 // 加权平均法求法向量
 void normalWithWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
-	cv::Vec2f v1 = cv::Vec2f(post.x - cur.x, post.y - cur.y);
-	cv::Vec2f v2 = cv::Vec2f(pre.x - cur.x, pre.y - cur.y);
-	normal = cv::normalize(v1 + v2);
+	// 用int向量避免浮点数精度问题
+	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
+	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
+	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
+	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
+		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
+	}
+	else {
+		normal = cv::normalize(cv::Vec2f(v1 + v2));
+	}
 }
 
 // 求法向约束点
@@ -120,29 +134,31 @@ void normalPointCalc(const std::vector<cv::Point>& boundaryPoints, std::vector<c
 	auto previousIndex = [=](int i) { return (i - 1 + n) % n; };
 	auto postIndex = [=](int i) { return (i + 1) % n; };
 	cv::Point candidiates[2];
-	bool candidateInsideContour[2];
+	double candidateInsideContour[2];
 	for (int i = 0; i < n; i++) {
 		cv::Point cur = boundaryPoints[i];
 		cv::Point prev = boundaryPoints[previousIndex(i)];
 		cv::Point post = boundaryPoints[postIndex(i)];
 		cv::Vec2f normal;
-		normalWithWeights(prev, cur, post, normal);
-		float offset = 1.0f;
-		bool findPoint = true;
-		while (findPoint) {
-			candidiates[0] = cv::Point(cur.x + normal[0] * offset, cur.y + normal[1] * offset);
-			candidiates[1] = cv::Point(cur.x - normal[0] * offset, cur.y - normal[1] * offset);
-			candidateInsideContour[0] = pointPolygonTest(boundaryPoints, candidiates[0], true);
-			candidateInsideContour[1] = pointPolygonTest(boundaryPoints, candidiates[1], true);
-			findPoint = candidateInsideContour[0] ^ candidateInsideContour[1];
-			offset += 1.0f;
+		normalWithoutWeights(prev, cur, post, normal);
+		bool findNormalPoint = false;
+		int cnt = 1;
+		while (!findNormalPoint) {
+			candidiates[0] = cv::Point(cur.x + normal[0] * OFFSET * cnt, cur.y + normal[1] * OFFSET * cnt);
+			candidiates[1] = cv::Point(cur.x - normal[0] * OFFSET * cnt, cur.y - normal[1] * OFFSET * cnt);
+			candidateInsideContour[0] = pointPolygonTest(boundaryPoints, candidiates[0], false);
+			candidateInsideContour[1] = pointPolygonTest(boundaryPoints, candidiates[1], false);
+			findNormalPoint = (candidateInsideContour[0] > 0) ^ (candidateInsideContour[1] > 0);
+			cnt++;
 		}
-		if (candidateInsideContour[0]) {
+		if (candidateInsideContour[0] > 0) {
 			normalPoints.emplace_back(candidiates[0]);
 		}
 		else {
 			normalPoints.emplace_back(candidiates[1]);
 		}
+		//normalPoints.emplace_back(candidiates[0]);
+		//normalPoints.emplace_back(candidiates[1]);
 	}
 }
 
@@ -176,16 +192,56 @@ void processImage2(const char* imagePath,
 	}
 	int maxPos = max_element(areas.begin(), areas.end()) - areas.begin();
 	std::vector<cv::Point> externalContour = contours[maxPos];
+
+#ifdef IMAGE_DEBUG
+	cv::Mat externalContourPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	for (int i = 0; i < externalContour.size(); i++) {
+		cv::circle(externalContourPointImage, externalContour[i], 0.5, cv::Scalar(255, 0, 0), 4);
+	}
+	cv::imshow("external_contour_point_image", externalContourPointImage);
+	cv::waitKey(0);
+#endif // IMAGE_DEBUG
+
 	std::vector<cv::Point> externalContourProx, internalContourProx;
 	cv::approxPolyDP(externalContour, externalContourProx, EPSILON * cv::arcLength(externalContour, true), true);
+
+#ifdef IMAGE_DEBUG
+	cv::Mat externalContourProxImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	for (int i = 0; i < externalContourProx.size(); i++) {
+		if (i == externalContourProx.size() - 1) {
+			cv::line(externalContourProxImage, externalContourProx[i], externalContourProx[0], cv::Scalar(255, 0, 0), 2);
+		}
+		else {
+			cv::line(externalContourProxImage, externalContourProx[i], externalContourProx[i + 1], cv::Scalar(255, 0, 0), 2);
+		}
+	}
+	cv::imshow("external_contour_prox_image", externalContourProxImage);
+	cv::waitKey(0);
+#endif // IMAGE_DEBUG
+
 	normalPointCalc(externalContourProx, internalContourProx);
 
 #ifdef IMAGE_DEBUG
+	cv::Mat constraintPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	//for (int i = 0; i < externalContourProx.size(); i++) {
+	//	cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
+	//	cv::circle(constraintPointImage, internalContourProx[i * 2], 0.5, cv::Scalar(0, 255, 0), 4);
+	//	cv::circle(constraintPointImage, internalContourProx[i * 2  + 1], 0.5, cv::Scalar(0, 255, 0), 4);
+	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2], cv::Scalar(0, 0, 255), 1);
+	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2 + 1], cv::Scalar(0, 0, 255), 1);
+	//}
+	for (int i = 0; i < externalContourProx.size(); i++) {
+		cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
+		cv::circle(constraintPointImage, internalContourProx[i], 0.5, cv::Scalar(0, 255, 0), 4);
+		cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i], cv::Scalar(0, 0, 255), 1);
+	}
+	cv::imshow("constraint_point_image", constraintPointImage);
+	cv::waitKey(0);
 	std::vector<std::vector<cv::Point>> contourProxs = { externalContourProx, internalContourProx };
-	cv::Mat outputImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
-	cv::drawContours(outputImage, contourProxs, 0, cv::Scalar(255, 0, 0));
-	cv::drawContours(outputImage, contourProxs, 1, cv::Scalar(0, 255, 0));
-	cv::imshow("prox_image", outputImage);
+	cv::Mat proxImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	cv::drawContours(proxImage, contourProxs, 0, cv::Scalar(255, 0, 0));
+	cv::drawContours(proxImage, contourProxs, 1, cv::Scalar(0, 255, 0));
+	cv::imshow("prox_image", proxImage);
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
@@ -212,7 +268,7 @@ void processImage3(const char* imagePath,
 
 	std::vector<std::vector<cv::Point>> contours;
 	std::vector<cv::Vec4i> hierarchy;
-	cv::findContours(cannyImage, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+	cv::findContours(cannyImage, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_NONE, cv::Point(0, 0));
 	std::vector<double> areas;
 	for (const auto& contour : contours) {
 		double area = cv::contourArea(contour);
@@ -222,6 +278,16 @@ void processImage3(const char* imagePath,
 	}
 	int maxPos = max_element(areas.begin(), areas.end()) - areas.begin();
 	std::vector<cv::Point> externalContour = contours[maxPos];
+
+#ifdef IMAGE_DEBUG
+	cv::Mat externalContourPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	for (int i = 0; i < externalContour.size(); i++) {
+		cv::circle(externalContourPointImage, externalContour[i], 0.5, cv::Scalar(255, 0, 0), 4);
+	}
+	cv::imshow("external_contour_point_image", externalContourPointImage);
+	cv::waitKey(0);
+#endif // IMAGE_DEBUG
+
 	std::vector<cv::Point> externalContourProx, internalContourProx;
 	double contourLength = cv::arcLength(externalContour, true);
 	double segmentLength = contourLength / SAMPLE_NUM;
@@ -241,14 +307,44 @@ void processImage3(const char* imagePath,
 		}
 		preLength = curLength;
 	}
+
+#ifdef IMAGE_DEBUG
+	cv::Mat externalContourProxImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	for (int i = 0; i < externalContourProx.size(); i++) {
+		if (i == externalContourProx.size() - 1) {
+			cv::line(externalContourProxImage, externalContourProx[i], externalContourProx[0], cv::Scalar(255, 0, 0), 2);
+		}
+		else {
+			cv::line(externalContourProxImage, externalContourProx[i], externalContourProx[i + 1], cv::Scalar(255, 0, 0), 2);
+		}
+	}
+	cv::imshow("external_contour_prox_image", externalContourProxImage);
+	cv::waitKey(0);
+#endif // IMAGE_DEBUG
+
 	normalPointCalc(externalContourProx, internalContourProx);
 
 #ifdef IMAGE_DEBUG
+	cv::Mat constraintPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	//for (int i = 0; i < externalContourProx.size(); i++) {
+	//	cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
+	//	cv::circle(constraintPointImage, internalContourProx[i * 2], 0.5, cv::Scalar(0, 255, 0), 4);
+	//	cv::circle(constraintPointImage, internalContourProx[i * 2  + 1], 0.5, cv::Scalar(0, 255, 0), 4);
+	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2], cv::Scalar(0, 0, 255), 1);
+	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2 + 1], cv::Scalar(0, 0, 255), 1);
+	//}
+	for (int i = 0; i < externalContourProx.size(); i++) {
+		cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
+		cv::circle(constraintPointImage, internalContourProx[i], 0.5, cv::Scalar(0, 255, 0), 4);
+		cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i], cv::Scalar(0, 0, 255), 1);
+	}
+	cv::imshow("constraint_point_image", constraintPointImage);
+	cv::waitKey(0);
 	std::vector<std::vector<cv::Point>> contourProxs = { externalContourProx, internalContourProx };
-	cv::Mat outputImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
-	cv::drawContours(outputImage, contourProxs, 0, cv::Scalar(255, 0, 0));
-	cv::drawContours(outputImage, contourProxs, 1, cv::Scalar(0, 255, 0));
-	cv::imshow("prox_image", outputImage);
+	cv::Mat proxImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
+	cv::drawContours(proxImage, contourProxs, 0, cv::Scalar(255, 0, 0));
+	cv::drawContours(proxImage, contourProxs, 1, cv::Scalar(0, 255, 0));
+	cv::imshow("prox_image", proxImage);
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 

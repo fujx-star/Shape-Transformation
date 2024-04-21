@@ -33,42 +33,12 @@ typedef struct Color {
     int r;
 } Color;
 
-//bool processImage(const char* inputImagePath, std::vector<Eigen::Vector2f> borderPoints) {
-//    cv::Mat inputImage = cv::imread(inputImagePath);
-//    if (inputImage.empty())
-//    {
-//        cout << "open inputImage failed" << endl;
-//        return false;
-//    }
-//
-//    int rows = inputImage.rows;
-//    int cols = inputImage.cols;
-//
-//    for (int i = 0; i < rows - 1; i++) {
-//        for (int j = 0; j < cols - 1; j++) {
-//            Color curColor = { inputImage.at<cv::Vec3b>(i, j)[0], inputImage.at<cv::Vec3b>(i, j)[1], inputImage.at<cv::Vec3b>(i, j)[2] };
-//            Color rightColor = { inputImage.at<cv::Vec3b>(i, j + 1)[0], inputImage.at<cv::Vec3b>(i, j + 1)[1], inputImage.at<cv::Vec3b>(i, j + 1)[2] };
-//            Color lowColor = { inputImage.at<cv::Vec3b>(i + 1, j)[0], inputImage.at<cv::Vec3b>(i + 1, j)[1], inputImage.at<cv::Vec3b>(i + 1, j)[2] };
-//            auto isBorder = [](const Color& c1, const Color& c2) {
-//                return c1.r > c2.r && c1.g > c2.g && c1.b > c2.b;
-//            };
-//            if (isBorder(curColor, rightColor)) {
-//                borderPoints.emplace_back(Eigen::Vector2f(i + 0.5, j));
-//            }
-//            if (isBorder(curColor, lowColor)) {
-//                borderPoints.emplace_back(Eigen::Vector2f(i, j + 0.5));
-//            }
-//        }
-//    }
-//    return true;
-//}
-
 void generateContraints(
     const char* imagePath,
     std::vector<pair<Eigen::Vector3f, float>>& constraints) 
 {
     std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
-    processImage3(imagePath, boundaryPoints, normalPoints);
+    processImage2(imagePath, boundaryPoints, normalPoints);
     for (const auto& point : boundaryPoints) {
         constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 0.0f);
     }
@@ -76,7 +46,6 @@ void generateContraints(
         constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 1.0f);
     }
 }
-
 
 int main()
 {
@@ -139,7 +108,7 @@ int main()
         for (int j = 0; j < numConstraints; j++) {
             A(i, j) = RBF(constraints[i].first - constraints[j].first);
         }
-}
+    }
     for (int i = 0; i < numConstraints; i++) {
         A(i, numConstraints) = 1.0f;
         for (int j = 0; j < DIMENSION; j++) {
