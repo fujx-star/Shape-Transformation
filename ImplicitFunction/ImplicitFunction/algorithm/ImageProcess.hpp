@@ -2,6 +2,7 @@
 #define __IMAGE_PROCESS_HPP__
 
 #include "../algorithm/ConvexHull.hpp"
+#include "../algorithm/ImplicitFunction.hpp"
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -12,17 +13,7 @@
 #define HIGH_THRESHOLD 200
 #define APERTURE_SIZE 3
 #define SAMPLE_NUM 50
-#define OFFSET 30.0
-
-#define X_MIN -3.0
-#define X_MAX 3.0
-#define X_SPAN (X_MAX - X_MIN)
-#define Y_MIN -3.0
-#define Y_MAX 3.0
-#define Y_SPAN (Y_MAX - Y_MIN)
-#define Z_MIN 0.0
-#define Z_MAX 0.0
-#define Z_SPAN (Z_MAX - Z_MIN)
+#define OFFSET 10.0
 
 #define IMAGE_DEBUG
 

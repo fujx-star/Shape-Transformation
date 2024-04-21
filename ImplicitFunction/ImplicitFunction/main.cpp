@@ -38,7 +38,7 @@ void generateContraints(
     std::vector<pair<Eigen::Vector3f, float>>& constraints) 
 {
     std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
-    processImage2(imagePath, boundaryPoints, normalPoints);
+    processImage3(imagePath, boundaryPoints, normalPoints);
     for (const auto& point : boundaryPoints) {
         constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 0.0f);
     }
@@ -149,6 +149,7 @@ int main()
     //float zmin = 0.0f;
     //float zmax = 0.0f;
     //float step = 0.02f;
+    checkConstraints(constraints, weights, P0, P);
 
     std::vector<Eigen::Vector3f> points;
     getZeroValuePoints(constraints, weights, P0, P, points);

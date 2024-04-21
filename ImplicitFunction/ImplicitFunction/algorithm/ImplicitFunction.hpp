@@ -8,20 +8,24 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <assert.h>
 #include <vector>
 
-#define X_MIN -3.0
-#define X_MAX 3.0
-#define Y_MIN -3.0
-#define Y_MAX 3.0
+#define X_MIN -10.0
+#define X_MAX 10.0
+#define Y_MIN -10.0
+#define Y_MAX 10.0
 #define Z_MIN 0.0
 #define Z_MAX 0.0
-#define X_STEP 0.02
-#define Y_STEP 0.02
-#define Z_STEP 0.02
+#define X_STEP 0.03
+#define Y_STEP 0.03
+#define Z_STEP 0.03
+#define X_SPAN (X_MAX - X_MIN)
+#define Y_SPAN (Y_MAX - Y_MIN)
+#define Z_SPAN (Z_MAX - Z_MIN)
 
 bool isZero(float x) {
-    return abs(x) < 0.1f;
+    return fabs(x) < 0.001f;
 }
 
 float RBF(Eigen::Vector3f x) {
@@ -59,7 +63,24 @@ void getZeroValuePoints(
                     result.push_back(Eigen::Vector3f(x, y, z));
                 }
             }
+        }
+    }
+}
 
+void checkConstraints(
+    const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
+    const Eigen::VectorXf& weights,
+    float P0,
+    const Eigen::Vector3f& P) {
+    float value;
+    for (const auto& constraint : constraints) {
+        if (constraint.second == 0.0f) {
+            value = implicitFunctionValue(constraint.first, constraints, weights, P0, P);
+            assert(fabs(value) < 0.01f);
+        }
+        else if (constraint.second == 1.0f) {
+            value = implicitFunctionValue(constraint.first, constraints, weights, P0, P);
+            assert(fabs(value - 1.0f) < 0.01f);
         }
     }
 }
