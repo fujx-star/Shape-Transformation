@@ -1,7 +1,7 @@
 #ifndef __IMAGE_PROCESS_HPP__
 #define __IMAGE_PROCESS_HPP__
 
-#include "../algorithm/ConvexHull.hpp"
+#include "../algorithm/PointProcess.hpp"
 #include "../algorithm/ImplicitFunction.hpp"
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -15,7 +15,7 @@
 #define SAMPLE_NUM 30
 #define OFFSET 2.0
 
-#define IMAGE_DEBUG
+#define IMAGE_DEBUGx
 
 void convertPoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints) {
 	for (const auto& cvPoint : cvPoints) {

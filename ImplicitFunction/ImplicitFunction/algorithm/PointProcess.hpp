@@ -1,5 +1,5 @@
-#ifndef __CONVEX_HULL_HPP__
-#define __CONVEX_HULL_HPP__
+#ifndef __POINT_PROCESS_HPP__
+#define __POINT_PROCESS_HPP__
 
 #include <iostream>
 #include <vector>

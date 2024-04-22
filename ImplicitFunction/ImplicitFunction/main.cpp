@@ -1,7 +1,5 @@
-﻿// ImplicitFunction.cpp: 定义应用程序的入口点。
-
-#include "algorithm/ImplicitFunction.hpp"
-#include "algorithm/ConvexHull.hpp"
+﻿#include "algorithm/ImplicitFunction.hpp"
+#include "algorithm/PointProcess.hpp"
 #include "algorithm/ImageProcess.hpp"
 #include "settings/Shader.h"
 #include "settings/Camera.h"
@@ -94,7 +92,7 @@ int main()
     //};
     std::vector<std::pair<Eigen::Vector3f, float>> constraints;
     int rows, cols;
-    generateContraints("C:/Users/Admin/Desktop/无标题.png", constraints, rows, cols);
+    generateContraints("C:/Users/Administrator/Desktop/无标题.png", constraints, rows, cols);
 
     int numConstraints = constraints.size();
     int n = numConstraints + DIMENSION + 1;
@@ -194,7 +192,11 @@ int main()
     int index = 0;
     for (int i = 0; i < linePoints.size(); i++) {
         for (int j = 0; j < DIMENSION; j++) {
-            linePointVertices[index++] = (linePoints[i][j] + offset[j]) / OPENGL_SCALE;
+            linePointVertices[index] = (linePoints[i][j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                linePointVertices[index] = -linePointVertices[index];
+            }
+            index++;
         }
     }
 
@@ -205,7 +207,11 @@ int main()
     index = 0;
     for (int i = 0; i < actualPoints.size(); i++) {
         for (int j = 0; j < DIMENSION; j++) {
-            actualPointVertices[index++] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
+            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                actualPointVertices[index] = -actualPointVertices[index];
+            }
+            index++;
         }
     }
 
