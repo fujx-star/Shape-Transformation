@@ -35,10 +35,11 @@ typedef struct Color {
 
 void generateContraints(
     const char* imagePath,
-    std::vector<pair<Eigen::Vector3f, float>>& constraints) 
+    std::vector<pair<Eigen::Vector3f, float>>& constraints,
+    int& rows, int& cols) 
 {
     std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
-    processImage3(imagePath, boundaryPoints, normalPoints);
+    processImage3(imagePath, rows, cols, boundaryPoints, normalPoints);
     for (const auto& point : boundaryPoints) {
         constraints.emplace_back(Eigen::Vector3f(point.x(), point.y(), 0.0f), 0.0f);
     }
@@ -91,7 +92,8 @@ int main()
     //    {Eigen::Vector3f(0.9f, -0.9f, 0.0f), 1.0f}
     //};
     std::vector<std::pair<Eigen::Vector3f, float>> constraints;
-    generateContraints("C:/Users/Administrator/Desktop/无标题.png", constraints);
+    int rows, cols;
+    generateContraints("C:/Users/Administrator/Desktop/无标题.png", constraints, rows, cols);
 
     int numConstraints = constraints.size();
     int n = numConstraints + DIMENSION + 1;
@@ -152,10 +154,37 @@ int main()
     checkConstraints(constraints, weights, P0, P);
 
     std::vector<Eigen::Vector3f> points;
-    getZeroValuePoints(constraints, weights, P0, P, points);
+    getZeroValuePoints(rows, cols, constraints, weights, P0, P, points);
+
+#ifdef IMAGE_DEBUG
+    cv::Mat generatePointImage = cv::Mat::zeros(rows, cols, CV_8UC3);
+    for (int i = 0; i < points.size(); i++) {
+        cv::Point2f point(points[i][0], points[i][1]);
+        cv::circle(generatePointImage, point, 0.5, cv::Scalar(255, 0, 0), 4);
+    }
+    cv::imshow("generate_point_image", generatePointImage);
+    cv::waitKey(0);
+#endif // IMAGE_DEBUG
 
     std::vector<Eigen::Vector3f> linePoints;
     ConvexHull(points, linePoints);
+
+#ifdef IMAGE_DEBUG
+    cv::Mat generateContourImage = cv::Mat::zeros(rows, cols, CV_8UC3);
+    for (int i = 0; i < linePoints.size(); i++) {
+        cv::Point2f startPoint(linePoints[i][0], linePoints[i][1]), endPoint;
+        if (i == linePoints.size() - 1) {
+            endPoint = { linePoints[0][0], linePoints[0][1] };
+        }
+        else {
+            endPoint = { linePoints[i + 1][0], linePoints[i + 1][1] };
+        }
+        cv::line(generateContourImage, startPoint, endPoint, cv::Scalar(255, 0, 0), 2);
+    }
+    cv::imshow("generate_contour_image", generateContourImage);
+    cv::waitKey(0);
+#endif // IMAGE_DEBUG
+
     int linePointSize = linePoints.size() * DIMENSION * sizeof(float);
     float* linePointVertices = (float*)malloc(linePointSize);
     int index = 0;

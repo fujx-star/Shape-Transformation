@@ -11,21 +11,11 @@
 #include <assert.h>
 #include <vector>
 
-#define X_MIN -10.0
-#define X_MAX 10.0
-#define Y_MIN -10.0
-#define Y_MAX 10.0
-#define Z_MIN 0.0
-#define Z_MAX 0.0
-#define X_STEP 0.03
-#define Y_STEP 0.03
-#define Z_STEP 0.03
-#define X_SPAN (X_MAX - X_MIN)
-#define Y_SPAN (Y_MAX - Y_MIN)
-#define Z_SPAN (Z_MAX - Z_MIN)
+#define STEP 2.0f
+#define TOLERANCE 0.3f
 
 bool isZero(float x) {
-    return fabs(x) < 0.001f;
+    return fabs(x) < TOLERANCE;
 }
 
 float RBF(Eigen::Vector3f x) {
@@ -51,14 +41,15 @@ float implicitFunctionValue(Eigen::Vector3f x,
 }
 
 void getZeroValuePoints(
+    int rows, int cols,
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights, float P0, const Eigen::Vector3f& P,
     std::vector<Eigen::Vector3f>& result)
 {
 #pragma omp parallel
-    for (float x = X_MIN; x <= X_MAX; x += X_STEP) {
-        for (float y = Y_MIN; y <= Y_MAX; y += Y_STEP) {
-            for (float z = Z_MIN; z <= Z_MAX; z += Z_STEP) {
+    for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
+        for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
+            for (float z = 0.0f; z <= 0.0f; z += STEP) {
                 if (isZero(implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints, weights, P0, P))) {
                     result.push_back(Eigen::Vector3f(x, y, z));
                 }
@@ -76,11 +67,11 @@ void checkConstraints(
     for (const auto& constraint : constraints) {
         if (constraint.second == 0.0f) {
             value = implicitFunctionValue(constraint.first, constraints, weights, P0, P);
-            assert(fabs(value) < 0.01f);
+            assert(fabs(value) < TOLERANCE);
         }
         else if (constraint.second == 1.0f) {
             value = implicitFunctionValue(constraint.first, constraints, weights, P0, P);
-            assert(fabs(value - 1.0f) < 0.01f);
+            assert(fabs(value - 1.0f) < TOLERANCE);
         }
     }
 }

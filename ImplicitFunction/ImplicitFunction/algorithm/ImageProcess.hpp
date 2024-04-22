@@ -13,20 +13,22 @@
 #define HIGH_THRESHOLD 200
 #define APERTURE_SIZE 3
 #define SAMPLE_NUM 50
-#define OFFSET 10.0
+#define OFFSET 2.0
 
 #define IMAGE_DEBUG
 
-void scalePoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints, int rows, int cols) {
+void scalePoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints, float scaleSize) {
 	for (const auto& cvPoint : cvPoints) {
 		float x = static_cast<float>(cvPoint.x);
 		float y = static_cast<float>(cvPoint.y);
-		eigenPoints.emplace_back(Eigen::Vector2f(x / cols * X_SPAN + X_MIN, y / rows * Y_SPAN + Y_MIN));
+		eigenPoints.emplace_back(Eigen::Vector2f(x / scaleSize, y / scaleSize));
 	}
 }
 
 // 图像处理函数1：用opencv提取外轮廓和内轮廓并逼近，分别得到边界约束点和法向约束点
-void processImage1(const char* imagePath,
+void processImage1(
+	int rows, int cols, 
+	const char* imagePath,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints) 
 {
@@ -46,8 +48,8 @@ void processImage1(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	int rows = srcImage.rows;
-	int cols = srcImage.cols;
+	rows = srcImage.rows;
+	cols = srcImage.cols;
 
 	cv::Mat cannyImage;
 	cv::Canny(threshImage, cannyImage, LOW_THRESHOLD, HIGH_THRESHOLD, APERTURE_SIZE);
@@ -86,8 +88,11 @@ void processImage1(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	scalePoints(internalContourProx, normalPoints, rows, cols);
+	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
+	//scalePoints(internalContourProx, normalPoints, rows, cols);
+
+	scalePoints(externalContourProx, boundaryPoints, 1.0f);
+	scalePoints(internalContourProx, normalPoints, 1.0f);
 }
 
 // 角平分线法求法向量
@@ -156,12 +161,13 @@ void normalPointCalc(const std::vector<cv::Point>& boundaryPoints, std::vector<c
 
 // 图像处理函数2：用opencv提取外轮廓得到边界约束点并逼近，根据边界约束点计算法向约束点
 void processImage2(const char* imagePath,
+	int rows, int cols,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints)
 {
 	cv::Mat srcImage = cv::imread(imagePath);
-	int rows = srcImage.rows;
-	int cols = srcImage.cols;
+	rows = srcImage.rows;
+	cols = srcImage.cols;
 
 	cv::Mat cannyImage;
 	cv::Canny(srcImage, cannyImage, LOW_THRESHOLD, HIGH_THRESHOLD, APERTURE_SIZE);
@@ -236,18 +242,21 @@ void processImage2(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	scalePoints(internalContourProx, normalPoints, rows, cols);
+	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
+	//scalePoints(internalContourProx, normalPoints, rows, cols);
+	scalePoints(externalContourProx, boundaryPoints, 1.0f);
+	scalePoints(internalContourProx, normalPoints, 1.0f);
 }
 
 // 图像处理函数3：用opencv提取外轮廓得到边界约束点并手动逼近，根据边界约束点计算法向约束点
 void processImage3(const char* imagePath,
+	int& rows, int& cols,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints)
 {
 	cv::Mat srcImage = cv::imread(imagePath);
-	int rows = srcImage.rows;
-	int cols = srcImage.cols;
+	rows = srcImage.rows;
+	cols = srcImage.cols;
 
 	cv::Mat cannyImage;
 	cv::Canny(srcImage, cannyImage, LOW_THRESHOLD, HIGH_THRESHOLD, APERTURE_SIZE);
@@ -339,8 +348,10 @@ void processImage3(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	scalePoints(internalContourProx, normalPoints, rows, cols);
+	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
+	//scalePoints(internalContourProx, normalPoints, rows, cols);
+	scalePoints(externalContourProx, boundaryPoints, 1.0f);
+	scalePoints(internalContourProx, normalPoints, 1.0f);
 }
 
 // 图像处理函数4：用自己的边界检测算法得到边界约束点，根据边界约束点计算法向约束点
