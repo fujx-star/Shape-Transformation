@@ -10,7 +10,7 @@
 #include <Eigen/LU>
 #include <Eigen/Eigen>
 
-#define POINT_SIZE 0.003
+#define POINT_SIZE 1.0f
 
 bool isEqual(float x, float y) {
 	return fabs(x - y) < 1e-10;

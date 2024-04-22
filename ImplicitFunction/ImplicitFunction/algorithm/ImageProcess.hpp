@@ -12,16 +12,16 @@
 #define LOW_THRESHOLD 100
 #define HIGH_THRESHOLD 200
 #define APERTURE_SIZE 3
-#define SAMPLE_NUM 50
+#define SAMPLE_NUM 30
 #define OFFSET 2.0
 
 #define IMAGE_DEBUG
 
-void scalePoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints, float scaleSize) {
+void convertPoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints) {
 	for (const auto& cvPoint : cvPoints) {
 		float x = static_cast<float>(cvPoint.x);
 		float y = static_cast<float>(cvPoint.y);
-		eigenPoints.emplace_back(Eigen::Vector2f(x / scaleSize, y / scaleSize));
+		eigenPoints.emplace_back(Eigen::Vector2f(x, y));
 	}
 }
 
@@ -88,11 +88,8 @@ void processImage1(
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	//scalePoints(internalContourProx, normalPoints, rows, cols);
-
-	scalePoints(externalContourProx, boundaryPoints, 1.0f);
-	scalePoints(internalContourProx, normalPoints, 1.0f);
+	convertPoints(externalContourProx, boundaryPoints);
+	convertPoints(internalContourProx, normalPoints);
 }
 
 // 角平分线法求法向量
@@ -242,10 +239,8 @@ void processImage2(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	//scalePoints(internalContourProx, normalPoints, rows, cols);
-	scalePoints(externalContourProx, boundaryPoints, 1.0f);
-	scalePoints(internalContourProx, normalPoints, 1.0f);
+	convertPoints(externalContourProx, boundaryPoints);
+	convertPoints(internalContourProx, normalPoints);
 }
 
 // 图像处理函数3：用opencv提取外轮廓得到边界约束点并手动逼近，根据边界约束点计算法向约束点
@@ -348,10 +343,8 @@ void processImage3(const char* imagePath,
 	cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-	//scalePoints(externalContourProx, boundaryPoints, rows, cols);
-	//scalePoints(internalContourProx, normalPoints, rows, cols);
-	scalePoints(externalContourProx, boundaryPoints, 1.0f);
-	scalePoints(internalContourProx, normalPoints, 1.0f);
+	convertPoints(externalContourProx, boundaryPoints);
+	convertPoints(internalContourProx, normalPoints);
 }
 
 // 图像处理函数4：用自己的边界检测算法得到边界约束点，根据边界约束点计算法向约束点

@@ -25,6 +25,7 @@
 #include <vector>
 #define DIMENSION 3
 #define MAX_MATRIX_DIMENSION 200
+#define OPENGL_SCALE 100.0f
 #define DEBUGx
 
 typedef struct Color {
@@ -93,7 +94,7 @@ int main()
     //};
     std::vector<std::pair<Eigen::Vector3f, float>> constraints;
     int rows, cols;
-    generateContraints("C:/Users/Administrator/Desktop/无标题.png", constraints, rows, cols);
+    generateContraints("C:/Users/Admin/Desktop/无标题.png", constraints, rows, cols);
 
     int numConstraints = constraints.size();
     int n = numConstraints + DIMENSION + 1;
@@ -185,12 +186,15 @@ int main()
     cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
+    // 使图像偏移到OPENGL窗口的中心位置
+    double offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
+
     int linePointSize = linePoints.size() * DIMENSION * sizeof(float);
     float* linePointVertices = (float*)malloc(linePointSize);
     int index = 0;
     for (int i = 0; i < linePoints.size(); i++) {
         for (int j = 0; j < DIMENSION; j++) {
-            linePointVertices[index++] = linePoints[i][j];
+            linePointVertices[index++] = (linePoints[i][j] + offset[j]) / OPENGL_SCALE;
         }
     }
 
@@ -201,7 +205,7 @@ int main()
     index = 0;
     for (int i = 0; i < actualPoints.size(); i++) {
         for (int j = 0; j < DIMENSION; j++) {
-            actualPointVertices[index++] = actualPoints[i][j];
+            actualPointVertices[index++] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
         }
     }
 

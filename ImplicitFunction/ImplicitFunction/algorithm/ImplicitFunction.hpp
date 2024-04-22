@@ -11,8 +11,8 @@
 #include <assert.h>
 #include <vector>
 
-#define STEP 2.0f
-#define TOLERANCE 0.3f
+#define STEP 5.0f
+#define TOLERANCE 1.0f
 
 bool isZero(float x) {
     return fabs(x) < TOLERANCE;
