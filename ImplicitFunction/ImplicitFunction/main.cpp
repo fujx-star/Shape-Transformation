@@ -1,8 +1,10 @@
-﻿#define DATA_DEBUGx
+﻿#define WRITE_MODEx
+#define DATA_DEBUGx
 #define IMAGE_DEBUG
 #define DIMENSION 3
 #define MAX_MATRIX_DIMENSION 200
 #define OPENGL_SCALE 100.0f
+
 #include "algorithm/ImplicitFunction.hpp"
 #include "algorithm/PointProcess.hpp"
 #include "algorithm/ImageProcess.hpp"
@@ -26,6 +28,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/utils/logger.hpp>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 typedef struct Color {
     int b;
@@ -56,6 +61,7 @@ bool implicitFunctionInterpolation(
     const char* imagePath_2,
     std::vector<Eigen::Vector3f>& points)
 {
+#ifdef WRITE_MODE
     std::vector<std::pair<Eigen::Vector3f, float>> constraints_1, constraints_2;
     int rows_1, cols_1;
     int rows_2, cols_2;
@@ -77,61 +83,81 @@ bool implicitFunctionInterpolation(
         return false;
     }
 
+    ofstream file1("image1_value.txt"), file2("image2_value.txt");
+    if (!file1 || !file2) {
+        return false;
+    }
+    file1 << rows_1 << std::endl << cols_1 << std::endl << STEP << std::endl;
+    file2 << rows_2 << std::endl << cols_2 << std::endl << STEP << std::endl;
+    float value;
+    for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
+        for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
+            for (float z = 0.0f; z <= 0.0f; z += STEP) {
+                value = implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_1, weights_1, P0_1, P_1);
+                file1 << std::setprecision(std::numeric_limits<float>::max_digits10) << value << std::endl;
+                value = implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_2, weights_2, P0_2, P_2);
+                file2 << std::setprecision(std::numeric_limits<float>::max_digits10) << value << std::endl;
+            }
+        }
+    }
+    file1.close();
+    file2.close();
+#else
     float weight_1 = weight;
     float weight_2 = 1.0f - weight;
+    ifstream file1("image1_value.txt"), file2("image2_value.txt");
+    if (!file1 || !file2) {
+        return false;
+    }
+    std::string line1, line2;
+    // 读取图片大小和步长
+    for (int i = 0; i < 3; i++) {
+        std::getline(file1, line1);
+        std::getline(file2, line2);
+        if (i == 0) {
+            rows = std::stoi(line1);
+        }
+        else if (i == 1) {
+            cols = std::stoi(line1);
+        }
+    }
 #pragma omp parallel
-    for (float x = 0.0f; x <= static_cast<float>(cols_1); x += STEP) {
-        for (float y = 0.0f; y <= static_cast<float>(rows_1); y += STEP) {
+    for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
+        for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
             for (float z = 0.0f; z <= 0.0f; z += STEP) {
-                if (isZero(weight_1 * implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_1, weights_1, P0_1, P_1) + weight_2 * implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_2, weights_2, P0_2, P_2))) {
+                std::getline(file1, line1);
+                std::getline(file2, line2);
+                float value1 = std::stof(line1);
+                float value2 = std::stof(line2);
+                if (isZero(weight_1 * value1 + weight_2 * value2)) {
                     points.push_back(Eigen::Vector3f(x, y, z));
                 }
             }
         }
     }
+#endif
 }
 
 int main()
 {
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
 
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
-
-    glEnable(GL_DEPTH_TEST);
-
     std::vector<Eigen::Vector3f> points;
-    // 得到函数零点为形状边界
+
+    // 单张图片形状边界
     //getZeroValuePoints(rows, cols, constraints, weights, P0, P, points);
 
-    float weight = 0.5f;
+    // 两张图片形状边界的线性插值
+    float weight = 0.3f;
     const char* imagePath_1 = "C:/Users/Administrator/Desktop/无标题.png";
     const char* imagePath_2 = "C:/Users/Administrator/Desktop/有标题.png";
     int rows, cols;
-    if (!implicitFunctionInterpolation(weight, rows, cols, imagePath_1, imagePath_2, points));
+    if (!implicitFunctionInterpolation(weight, rows, cols, imagePath_1, imagePath_2, points)) {
+        std::cerr << "Implicit function interpolation failed." << std::endl;
+        return -1;
+    }
 
+#ifndef WRITE_MODE
 #ifdef IMAGE_DEBUG
     cv::Mat generatePointImage = cv::Mat::zeros(rows, cols, CV_8UC3);
     for (int i = 0; i < points.size(); i++) {
@@ -164,123 +190,160 @@ int main()
     cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
-//    // 使图像偏移到OPENGL窗口的中心位置
-//    double offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
-//
-//    int linePointSize = linePoints.size() * DIMENSION * sizeof(float);
-//    float* linePointVertices = (float*)malloc(linePointSize);
-//    int index = 0;
-//    for (int i = 0; i < linePoints.size(); i++) {
-//        for (int j = 0; j < DIMENSION; j++) {
-//            linePointVertices[index] = (linePoints[i][j] + offset[j]) / OPENGL_SCALE;
-//            if (j == 1) {
-//                linePointVertices[index] = -linePointVertices[index];
-//            }
-//            index++;
-//        }
-//    }
-//
-//    vector<Eigen::Vector3f> actualPoints;
-//    pointConvertTriangle(linePoints, actualPoints);
-//    int actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
-//    float* actualPointVertices = (float*)malloc(actualPointSize);
-//    index = 0;
-//    for (int i = 0; i < actualPoints.size(); i++) {
-//        for (int j = 0; j < DIMENSION; j++) {
-//            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
-//            if (j == 1) {
-//                actualPointVertices[index] = -actualPointVertices[index];
-//            }
-//            index++;
-//        }
-//    }
-//
-//#ifdef DATA_DEBUG
-//    // 验证数据
-//    std::cout << "---------------points---------------" << points.size() << std::endl;
-//    for (int i = 0; i < points.size(); i++) {
-//        for (int j = 0; j < DIMENSION; j++) {
-//            std::cout << points[i][j] << " ";
-//        }
-//        std::cout << std::endl;
-//    }
-//    std::cout << "---------------line points---------------" << linePoints.size() << std::endl;
-//    for (int i = 0; i < linePoints.size(); i++) {
-//        for (int j = 0; j < DIMENSION; j++) {
-//            std::cout << linePointVertices[i * DIMENSION + j] << " ";
-//        }
-//        std::cout << std::endl;
-//    }
-//    std::cout << "---------------actual points---------------" << actualPoints.size() << std::endl;
-//    for (int i = 0; i < actualPoints.size(); i++) {
-//        for (int j = 0; j < DIMENSION; j++) {
-//            std::cout << actualPointVertices[i * DIMENSION + j] << " ";
-//        }
-//        std::cout << std::endl;
-//    }
-//#endif // DATA_DEBUG
-//
-//    Shader pointShader("../../../../ImplicitFunction/resources/Point.vert", "../../../../ImplicitFunction/resources/Point.frag");
-//    Shader lineShader("../../../../ImplicitFunction/resources/Line.vert", "../../../../ImplicitFunction/resources/Line.frag");
-//
-//    unsigned int VBOs[2], VAOs[2];
-//    glGenVertexArrays(2, VAOs);
-//    glGenBuffers(2, VBOs);
-//
-//    glBindVertexArray(VAOs[0]);
-//    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
-//    glBufferData(GL_ARRAY_BUFFER, actualPointSize, actualPointVertices, GL_STATIC_DRAW);
-//    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
-//    glEnableVertexAttribArray(0);
-//
-//    glBindVertexArray(VAOs[1]);
-//    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
-//    glBufferData(GL_ARRAY_BUFFER, linePointSize, linePointVertices, GL_STATIC_DRAW);
-//    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
-//    glEnableVertexAttribArray(0);
-//
-//    while (!glfwWindowShouldClose(window))
-//    {
-//        float currentFrame = static_cast<float>(glfwGetTime());
-//        deltaTime = currentFrame - lastFrame;
-//        lastFrame = currentFrame;
-//
-//        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//
-//        processInput(window);
-//
-//        glm::mat4 model = glm::mat4(1.0f);
-//        glm::mat4 view = glm::mat4(1.0f);
-//        glm::mat4 projection = glm::mat4(1.0f);
-//        view = camera.GetViewMatrix();
-//        projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-//
-//        pointShader.use();
-//        pointShader.setMat4f("model", model);
-//        pointShader.setMat4f("view", view);
-//        pointShader.setMat4f("projection", projection);
-//
-//        glBindVertexArray(VAOs[0]);
-//        glDrawArrays(GL_TRIANGLES, 0, actualPoints.size());
-//
-//        lineShader.use();
-//        lineShader.setMat4f("model", model);
-//        lineShader.setMat4f("view", view);
-//        lineShader.setMat4f("projection", projection);
-//        glBindVertexArray(VAOs[1]);
-//        glDrawArrays(GL_LINE_LOOP, 0, linePoints.size());
-//
-//        glfwSwapBuffers(window);
-//        glfwPollEvents();
-//
-//    }
-//
-//    glDeleteVertexArrays(2, VAOs);
-//    glDeleteBuffers(2, VBOs);
-//    pointShader.Delete();
-//    lineShader.Delete();
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    glEnable(GL_DEPTH_TEST);
+
+    // 使图像偏移到OPENGL窗口的中心位置
+    double offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
+    int index = 0;
+
+    vector<Eigen::Vector3f> actualPoints;
+    pointConvertTriangle(points, pointIndexes, actualPoints);
+    int actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
+    float* actualPointVertices = (float*)malloc(actualPointSize);
+    index = 0;
+    for (int i = 0; i < actualPoints.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
+            // 因为OPENGL坐标系和图片坐标系的Y轴方向相反，所以需要翻转Y轴
+            if (j == 1) {
+                actualPointVertices[index] = -actualPointVertices[index];
+            }
+            index++;
+        }
+    }
+
+    index = 0;
+    int edgePointSize = edgeIndexes.size() * 2 * DIMENSION * sizeof(float);
+    float* edgePointVertices = (float*)malloc(edgePointSize);
+    for (int i = 0; i < edgeIndexes.size(); i++) {
+        Eigen::Vector3f startPoint = points[edgeIndexes[i].first];
+        Eigen::Vector3f endPoint = points[edgeIndexes[i].second];
+        for (int j = 0; j < DIMENSION; j++) {
+            edgePointVertices[index] = (startPoint[j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                edgePointVertices[index] = -edgePointVertices[index];
+            }
+            index++;
+        }
+        for (int j = 0; j < DIMENSION; j++) {
+            edgePointVertices[index] = (endPoint[j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                edgePointVertices[index] = -edgePointVertices[index];
+            }
+            index++;
+        }
+    }
+
+#ifdef DATA_DEBUG
+    // 验证数据
+    std::cout << "---------------points---------------" << points.size() << std::endl;
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            std::cout << points[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "---------------edge points---------------" << linePoints.size() << std::endl;
+    for (int i = 0; i < edgeIndexes.size() * 2; i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            std::cout << linePointVertices[i * DIMENSION + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "---------------actual points---------------" << actualPoints.size() << std::endl;
+    for (int i = 0; i < pointIndexes.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            std::cout << actualPointVertices[i * DIMENSION + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+#endif // DATA_DEBUG
+
+    Shader pointShader("../../../../ImplicitFunction/resources/Point.vert", "../../../../ImplicitFunction/resources/Point.frag");
+    Shader edgeShader("../../../../ImplicitFunction/resources/Edge.vert", "../../../../ImplicitFunction/resources/Edge.frag");
+
+    unsigned int VBOs[2], VAOs[2];
+    glGenVertexArrays(2, VAOs);
+    glGenBuffers(2, VBOs);
+
+    glBindVertexArray(VAOs[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
+    glBufferData(GL_ARRAY_BUFFER, actualPointSize, actualPointVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(VAOs[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
+    glBufferData(GL_ARRAY_BUFFER, edgePointSize, edgePointVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    while (!glfwWindowShouldClose(window))
+    {
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        processInput(window);
+
+        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 view = glm::mat4(1.0f);
+        glm::mat4 projection = glm::mat4(1.0f);
+        view = camera.GetViewMatrix();
+        projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+        pointShader.use();
+        pointShader.setMat4f("model", model);
+        pointShader.setMat4f("view", view);
+        pointShader.setMat4f("projection", projection);
+
+        glBindVertexArray(VAOs[0]);
+        glDrawArrays(GL_TRIANGLES, 0, actualPoints.size());
+
+        edgeShader.use();
+        edgeShader.setMat4f("model", model);
+        edgeShader.setMat4f("view", view);
+        edgeShader.setMat4f("projection", projection);
+        glBindVertexArray(VAOs[1]);
+        glDrawArrays(GL_LINES, 0, edgeIndexes.size() * 2);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+    }
+    glDeleteVertexArrays(2, VAOs);
+    glDeleteBuffers(2, VBOs);
+    pointShader.Delete();
+    edgeShader.Delete();
 
     glfwTerminate();
+#endif // !WRITE_MODE  
+
     return 0;
 }
