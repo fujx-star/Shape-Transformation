@@ -1,6 +1,8 @@
 #ifndef __POINT_PROCESS_HPP__
 #define __POINT_PROCESS_HPP__
 
+#define POINT_SIZE 1.0f
+#define ALPHA 100.0f
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -9,8 +11,6 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <Eigen/Eigen>
-
-#define POINT_SIZE 1.0f
 
 bool isEqual(float x, float y) {
 	return fabs(x - y) < 1e-10;
@@ -78,8 +78,6 @@ int pointSide(Eigen::Vector3f start, Eigen::Vector3f end, Eigen::Vector3f target
 	}
 }
 
-
-
 // 所有的点在凸包边界的右边，暴力遍历
 void SlowConvexHull(std::vector<Eigen::Vector3f> points, std::vector<Eigen::Vector3f>& retPoints) {
 	int n = points.size();
@@ -122,7 +120,6 @@ void SlowConvexHull(std::vector<Eigen::Vector3f> points, std::vector<Eigen::Vect
 	}
 	//std::cout << points.size() << ret.size();
 }
-
 
 // 迭代法，看后三个点朝左拐还是朝右拐，凸包边界肯定是朝右拐
 void ConvexHull(std::vector<Eigen::Vector3f> points, std::vector<Eigen::Vector3f>& retPoints) {
@@ -180,6 +177,55 @@ void ConvexHull(std::vector<Eigen::Vector3f> points, std::vector<Eigen::Vector3f
 		}
 	}
 	//std::cout << points.size() << retPoints.size();
+}
+
+float eh(const Eigen::Vector3f& p1, const Eigen::Vector3f& p2) {
+	return sqrt(pow(ALPHA, 2) / (p1 - p2).squaredNorm() - 0.25f);
+}
+
+void circleCenterCalc(const Eigen::Vector3f& p1, const Eigen::Vector3f& p2, Eigen::Vector3f& c1, Eigen::Vector3f& c2) {
+	float ehValue = eh(p1, p2);
+	c1 = { (p1[0] + p2[0]) / 2 - ehValue * (p1[1] - p2[1]), (p1[1] + p2[1]) / 2 - ehValue * (p2[0] - p1[0]), 0.0f };
+	c2 = { (p1[0] + p2[0]) / 2 + ehValue * (p1[1] - p2[1]), (p1[1] + p2[1]) / 2 + ehValue * (p2[0] - p1[0]), 0.0f };
+}
+
+void ConcaveHull(const std::vector<Eigen::Vector3f>& points, std::vector<int>& retPointIndexes, std::vector<std::pair<int, int>>& retEdgeIndexes) {
+	int n = points.size();
+	std::vector<std::vector<int>> candPoints(n);
+	for (int i = 0; i < n; i++) {
+		for (int j = i + 1; j < n; j++) {
+			float squaredDistance = (points[i] - points[j]).squaredNorm();
+			if (squaredDistance < ALPHA * 2) {
+				candPoints[i].push_back(j);
+				candPoints[j].push_back(i);
+			}
+		}
+	}
+	for (int i = 0; i < points.size(); i++) {
+		for (int j = 0; j < candPoints[i].size(); j++) {
+			if (candPoints[i][j] <= i) {
+				continue;
+			}
+			Eigen::Vector3f c1, c2;
+			circleCenterCalc(points[i], points[candPoints[i][j]], c1, c2);
+			bool flag1 = true, flag2 = true;
+			for (int k = 0; k < candPoints[i].size(); k++) {
+				if (candPoints[i][k] != candPoints[i][j]) {
+					if ((c1 - points[candPoints[i][k]]).norm() <= ALPHA) {
+						flag1 = false;
+					}
+					if ((c2 - points[candPoints[i][k]]).norm() <= ALPHA) {
+						flag2 = false;
+					}
+				}
+			}
+			// 此时points[i]和points[candPoints[i][j]]构成凹包边界
+			if (flag1 || flag2) {
+				retPointIndexes.emplace_back(i);
+				retEdgeIndexes.emplace_back(std::make_pair(i, candPoints[i][j]));
+			}
+		}
+	}
 }
 
 #endif

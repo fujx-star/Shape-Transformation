@@ -1,12 +1,6 @@
 #ifndef __IMAGE_PROCESS_HPP__
 #define __IMAGE_PROCESS_HPP__
 
-#include "../algorithm/PointProcess.hpp"
-#include "../algorithm/ImplicitFunction.hpp"
-#include <opencv2/opencv.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/core/utils/logger.hpp>
 #define AREA_LIMIT 1000
 #define EPSILON 0.003
 #define LOW_THRESHOLD 100
@@ -14,8 +8,12 @@
 #define APERTURE_SIZE 3
 #define SAMPLE_NUM 30
 #define OFFSET 2.0
-
-#define IMAGE_DEBUGx
+#include "../algorithm/PointProcess.hpp"
+#include "../algorithm/ImplicitFunction.hpp"
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/utils/logger.hpp>
 
 void convertPoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints) {
 	for (const auto& cvPoint : cvPoints) {
