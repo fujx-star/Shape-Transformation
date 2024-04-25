@@ -6,7 +6,7 @@
 #define LOW_THRESHOLD 100
 #define HIGH_THRESHOLD 200
 #define APERTURE_SIZE 3
-#define SAMPLE_NUM 30
+#define SAMPLE_NUM 50
 #define OFFSET 2.0
 #include "../algorithm/PointProcess.hpp"
 #include "../algorithm/ImplicitFunction.hpp"
@@ -15,6 +15,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
+// 把cv::Point转换为Eigen::Vector2f
 void convertPoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Vector2f>& eigenPoints) {
 	for (const auto& cvPoint : cvPoints) {
 		float x = static_cast<float>(cvPoint.x);
@@ -23,10 +24,71 @@ void convertPoints(const std::vector<cv::Point>& cvPoints, std::vector<Eigen::Ve
 	}
 }
 
+// 角平分线法求法向量
+void normalWithoutWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
+	// 用int避免浮点数精度问题
+	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
+	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
+	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
+	// Vec2i和Vec2f的normalize逻辑不同，需要先转换为Vec2f
+	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
+		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
+	}
+	else {
+		normal = cv::normalize(cv::normalize(cv::Vec2f(v1)) + cv::normalize(cv::Vec2f(v2)));
+	}
+}
+
+// 加权平均法求法向量
+void normalWithWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
+	// 用int向量避免浮点数精度问题
+	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
+	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
+	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
+	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
+		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
+	}
+	else {
+		normal = cv::normalize(cv::Vec2f(v1 + v2));
+	}
+}
+
+// 根据边界约束点求法向约束点
+void normalPointCalc(const std::vector<cv::Point>& boundaryPoints, std::vector<cv::Point>& normalPoints) {
+	int n = boundaryPoints.size();
+	auto previousIndex = [=](int i) { return (i - 1 + n) % n; };
+	auto postIndex = [=](int i) { return (i + 1) % n; };
+	cv::Point candidiates[2];
+	double candidateInsideContour[2];
+	for (int i = 0; i < n; i++) {
+		cv::Point cur = boundaryPoints[i];
+		cv::Point prev = boundaryPoints[previousIndex(i)];
+		cv::Point post = boundaryPoints[postIndex(i)];
+		cv::Vec2f normal;
+		normalWithoutWeights(prev, cur, post, normal);
+		bool findNormalPoint = false;
+		int cnt = 1;
+		while (!findNormalPoint) {
+			candidiates[0] = cv::Point(cur.x + normal[0] * OFFSET * cnt, cur.y + normal[1] * OFFSET * cnt);
+			candidiates[1] = cv::Point(cur.x - normal[0] * OFFSET * cnt, cur.y - normal[1] * OFFSET * cnt);
+			candidateInsideContour[0] = pointPolygonTest(boundaryPoints, candidiates[0], false);
+			candidateInsideContour[1] = pointPolygonTest(boundaryPoints, candidiates[1], false);
+			findNormalPoint = (candidateInsideContour[0] > 0) ^ (candidateInsideContour[1] > 0);
+			cnt++;
+		}
+		if (candidateInsideContour[0] > 0) {
+			normalPoints.emplace_back(candidiates[0]);
+		}
+		else {
+			normalPoints.emplace_back(candidiates[1]);
+		}
+	}
+}
+
 // 图像处理函数1：用opencv提取外轮廓和内轮廓并逼近，分别得到边界约束点和法向约束点
 void processImage1(
-	int rows, int cols, 
 	const char* imagePath,
+	int& rows, int& cols,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints) 
 {
@@ -90,73 +152,10 @@ void processImage1(
 	convertPoints(internalContourProx, normalPoints);
 }
 
-// 角平分线法求法向量
-void normalWithoutWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
-	// 用int避免浮点数精度问题
-	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
-	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
-	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
-	// Vec2i和Vec2f的normalize逻辑不同，需要先转换为Vec2f
-	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
-		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
-	}
-	else {
-		normal = cv::normalize(cv::normalize(cv::Vec2f(v1)) + cv::normalize(cv::Vec2f(v2)));
-	}
-}
-
-// 加权平均法求法向量
-void normalWithWeights(const cv::Point& pre, const cv::Point& cur, const cv::Point& post, cv::Vec2f& normal) {
-	// 用int向量避免浮点数精度问题
-	cv::Vec2i v1(post.x - cur.x, post.y - cur.y);
-	cv::Vec2i v2(pre.x - cur.x, pre.y - cur.y);
-	// 如果两个向量平行，法向量为垂直于其中一个向量的单位向量
-	if (v1[0] * v2[1] - v1[1] * v2[0] == 0) {
-		normal = cv::normalize(cv::Vec2f(v1[1], -v1[0]));
-	}
-	else {
-		normal = cv::normalize(cv::Vec2f(v1 + v2));
-	}
-}
-
-// 求法向约束点
-void normalPointCalc(const std::vector<cv::Point>& boundaryPoints, std::vector<cv::Point>& normalPoints) {
-	int n = boundaryPoints.size();
-	auto previousIndex = [=](int i) { return (i - 1 + n) % n; };
-	auto postIndex = [=](int i) { return (i + 1) % n; };
-	cv::Point candidiates[2];
-	double candidateInsideContour[2];
-	for (int i = 0; i < n; i++) {
-		cv::Point cur = boundaryPoints[i];
-		cv::Point prev = boundaryPoints[previousIndex(i)];
-		cv::Point post = boundaryPoints[postIndex(i)];
-		cv::Vec2f normal;
-		normalWithoutWeights(prev, cur, post, normal);
-		bool findNormalPoint = false;
-		int cnt = 1;
-		while (!findNormalPoint) {
-			candidiates[0] = cv::Point(cur.x + normal[0] * OFFSET * cnt, cur.y + normal[1] * OFFSET * cnt);
-			candidiates[1] = cv::Point(cur.x - normal[0] * OFFSET * cnt, cur.y - normal[1] * OFFSET * cnt);
-			candidateInsideContour[0] = pointPolygonTest(boundaryPoints, candidiates[0], false);
-			candidateInsideContour[1] = pointPolygonTest(boundaryPoints, candidiates[1], false);
-			findNormalPoint = (candidateInsideContour[0] > 0) ^ (candidateInsideContour[1] > 0);
-			cnt++;
-		}
-		if (candidateInsideContour[0] > 0) {
-			normalPoints.emplace_back(candidiates[0]);
-		}
-		else {
-			normalPoints.emplace_back(candidiates[1]);
-		}
-		//normalPoints.emplace_back(candidiates[0]);
-		//normalPoints.emplace_back(candidiates[1]);
-	}
-}
-
-
 // 图像处理函数2：用opencv提取外轮廓得到边界约束点并逼近，根据边界约束点计算法向约束点
-void processImage2(const char* imagePath,
-	int rows, int cols,
+void processImage2(
+	const char* imagePath,
+	int& rows, int& cols,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints)
 {
@@ -215,13 +214,6 @@ void processImage2(const char* imagePath,
 
 #ifdef IMAGE_DEBUG
 	cv::Mat constraintPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
-	//for (int i = 0; i < externalContourProx.size(); i++) {
-	//	cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
-	//	cv::circle(constraintPointImage, internalContourProx[i * 2], 0.5, cv::Scalar(0, 255, 0), 4);
-	//	cv::circle(constraintPointImage, internalContourProx[i * 2  + 1], 0.5, cv::Scalar(0, 255, 0), 4);
-	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2], cv::Scalar(0, 0, 255), 1);
-	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2 + 1], cv::Scalar(0, 0, 255), 1);
-	//}
 	for (int i = 0; i < externalContourProx.size(); i++) {
 		cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
 		cv::circle(constraintPointImage, internalContourProx[i], 0.5, cv::Scalar(0, 255, 0), 4);
@@ -242,7 +234,8 @@ void processImage2(const char* imagePath,
 }
 
 // 图像处理函数3：用opencv提取外轮廓得到边界约束点并手动逼近，根据边界约束点计算法向约束点
-void processImage3(const char* imagePath,
+void processImage3(
+	const char* imagePath,
 	int& rows, int& cols,
 	std::vector<Eigen::Vector2f>& boundaryPoints,
 	std::vector<Eigen::Vector2f>& normalPoints)
@@ -319,13 +312,6 @@ void processImage3(const char* imagePath,
 
 #ifdef IMAGE_DEBUG
 	cv::Mat constraintPointImage = cv::Mat::zeros(srcImage.size(), CV_8UC3);
-	//for (int i = 0; i < externalContourProx.size(); i++) {
-	//	cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
-	//	cv::circle(constraintPointImage, internalContourProx[i * 2], 0.5, cv::Scalar(0, 255, 0), 4);
-	//	cv::circle(constraintPointImage, internalContourProx[i * 2  + 1], 0.5, cv::Scalar(0, 255, 0), 4);
-	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2], cv::Scalar(0, 0, 255), 1);
-	//	cv::line(constraintPointImage, externalContourProx[i], internalContourProx[i * 2 + 1], cv::Scalar(0, 0, 255), 1);
-	//}
 	for (int i = 0; i < externalContourProx.size(); i++) {
 		cv::circle(constraintPointImage, externalContourProx[i], 0.5, cv::Scalar(255, 0, 0), 4);
 		cv::circle(constraintPointImage, internalContourProx[i], 0.5, cv::Scalar(0, 255, 0), 4);

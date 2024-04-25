@@ -17,9 +17,59 @@ bool isEqual(float x, float y) {
 }
 
 void pointConvertTriangle(
+	const std::vector<Eigen::Vector3f>& points,
+	std::vector<Eigen::Vector3f>& actualPoints)
+{
+	for (const auto& point : points) {
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() - POINT_SIZE, point.z() - POINT_SIZE));
+
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() + POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() + POINT_SIZE));
+		actualPoints.push_back(Eigen::Vector3f(point.x() - POINT_SIZE, point.y() + POINT_SIZE, point.z() - POINT_SIZE));
+	}
+}
+
+void pointIndexConvertTriangle(
 	const std::vector<Eigen::Vector3f>& points, 
 	const std::vector<int>& pointIndexes,
-	std::vector<Eigen::Vector3f>& actualPoints) {
+	std::vector<Eigen::Vector3f>& actualPoints) 
+{
 	for (int i = 0; i < pointIndexes.size(); i++) {
 		Eigen::Vector3f point = points[pointIndexes[i]];
 

@@ -1,8 +1,10 @@
 ﻿#define WRITE_MODEx
+#define EDGE_MODEx
 #define DATA_DEBUGx
-#define IMAGE_DEBUG
+#define IMAGE_DEBUGx
 #define DIMENSION 3
 #define MAX_MATRIX_DIMENSION 200
+#define MAX_ALLOC_SIZE 10485760
 #define OPENGL_SCALE 100.0f
 
 #include "algorithm/ImplicitFunction.hpp"
@@ -38,10 +40,11 @@ typedef struct Color {
     int r;
 } Color;
 
+// 根据图片得到约束条件
 void generateContraints(
     const char* imagePath,
     std::vector<pair<Eigen::Vector3f, float>>& constraints,
-    int& rows, int& cols) 
+    int& rows, int& cols)
 {
     std::vector<Eigen::Vector2f> boundaryPoints, normalPoints;
     processImage3(imagePath, rows, cols, boundaryPoints, normalPoints);
@@ -53,15 +56,13 @@ void generateContraints(
     }
 }
 
-bool implicitFunctionInterpolation(
-    float weight,
+// 将两张图片像素点的隐函数值写入文件
+bool writeImageValue(
     int& rows,
     int& cols,
-    const char* imagePath_1, 
-    const char* imagePath_2,
-    std::vector<Eigen::Vector3f>& points)
+    const char* imagePath_1,
+    const char* imagePath_2)
 {
-#ifdef WRITE_MODE
     std::vector<std::pair<Eigen::Vector3f, float>> constraints_1, constraints_2;
     int rows_1, cols_1;
     int rows_2, cols_2;
@@ -90,30 +91,159 @@ bool implicitFunctionInterpolation(
     file1 << rows_1 << std::endl << cols_1 << std::endl << STEP << std::endl;
     file2 << rows_2 << std::endl << cols_2 << std::endl << STEP << std::endl;
     float value;
-    for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
-        for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
-            for (float z = 0.0f; z <= 0.0f; z += STEP) {
+    for (int x = 0; x < cols; x += STEP) {
+        for (int y = 0; y < rows; y += STEP) {
+            for (int z = 0; z <= 0; z += STEP) {
                 value = implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_1, weights_1, P0_1, P_1);
                 file1 << std::setprecision(std::numeric_limits<float>::max_digits10) << value << std::endl;
                 value = implicitFunctionValue(Eigen::Vector3f(x, y, z), constraints_2, weights_2, P0_2, P_2);
                 file2 << std::setprecision(std::numeric_limits<float>::max_digits10) << value << std::endl;
             }
         }
-        std::cout << "Finish writing cols[" << x << "]" << std::endl;
+        if (x % 10 == 0) {
+            std::cout << "Finish writing cols[" << x << "]" << std::endl;
+        }
     }
     file1.close();
     file2.close();
     std::cout << "Suceessfully write image1_value.txt and image2_value.txt" << std::endl;
-#else
+    return true;
+}
+
+// 根据文件读取图片的隐函数值，并插值得到新的边界点
+void implicitFunctionInterpolation(
+    float weight,
+    int rows,
+    int cols,
+    float* fileData_1,
+    float* fileData_2,
+    std::vector<Eigen::Vector3f>& points)
+{
     float weight_1 = weight;
     float weight_2 = 1.0f - weight;
+
+    // 读取图片的隐函数值
+    int index = 0;
+#pragma omp parallel
+    for (int x = 0; x < cols; x += STEP) {
+        for (int y = 0; y < rows; y += STEP) {
+            for (int z = 0; z <= 0; z += STEP) {
+                float value1 = fileData_1[index];
+                float value2 = fileData_2[index];
+                if (isZero(weight_1 * value1 + weight_2 * value2)) {
+                    points.push_back(Eigen::Vector3f(x, y, z));
+                }
+                index++;
+            }
+        }
+    }
+}
+
+// 点模式：OpenGL仅显示点
+bool presentPoint(
+    std::vector<Eigen::Vector3f> points,
+    int& actualPointSize,
+    float* actualPointVertices,
+    float* offset)
+{
+    vector<Eigen::Vector3f> actualPoints;
+    pointConvertTriangle(points, actualPoints);
+    actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
+    if (actualPointSize > MAX_ALLOC_SIZE) {
+        std::cerr << "OpenGL data size is too large." << std::endl;
+        return false;
+    }
+    int index = 0;
+    for (int i = 0; i < actualPoints.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
+            // 因为OPENGL坐标系和图片坐标系的Y轴方向相反，所以需要翻转Y轴
+            if (j == 1) {
+                actualPointVertices[index] = -actualPointVertices[index];
+            }
+            index++;
+        }
+    }
+    return true;
+}
+
+// 点边模式：OpenGL显示α-shape算法处理后的点和边
+bool presentPointAndEdge(
+    std::vector<Eigen::Vector3f> points,
+    int& actualPointSize,
+    int& edgePointSize,
+    float* actualPointVertices,
+    float* edgePointVertices,
+    float* offset)
+{
+    std::vector<int> pointIndexes;
+    std::vector<std::pair<int, int>> edgeIndexes;
+    ConcaveHull(points, pointIndexes, edgeIndexes);
+    vector<Eigen::Vector3f> actualPoints;
+    pointIndexConvertTriangle(points, pointIndexes, actualPoints);
+
+    actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
+    edgePointSize = edgeIndexes.size() * 2 * DIMENSION * sizeof(float);
+    if (actualPointSize > MAX_ALLOC_SIZE || edgePointSize > MAX_ALLOC_SIZE) {
+        std::cerr << "OpenGL data size is too large." << std::endl;
+        return false;
+    }
+    int index = 0;
+    for (int i = 0; i < actualPoints.size(); i++) {
+        for (int j = 0; j < DIMENSION; j++) {
+            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
+            // 因为OPENGL坐标系和图片坐标系的Y轴方向相反，所以需要翻转Y轴
+            if (j == 1) {
+                actualPointVertices[index] = -actualPointVertices[index];
+            }
+            index++;
+        }
+    }
+    index = 0;
+    for (int i = 0; i < edgeIndexes.size(); i++) {
+        Eigen::Vector3f startPoint = points[edgeIndexes[i].first];
+        Eigen::Vector3f endPoint = points[edgeIndexes[i].second];
+        for (int j = 0; j < DIMENSION; j++) {
+            edgePointVertices[index] = (startPoint[j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                edgePointVertices[index] = -edgePointVertices[index];
+            }
+            index++;
+        }
+        for (int j = 0; j < DIMENSION; j++) {
+            edgePointVertices[index] = (endPoint[j] + offset[j]) / OPENGL_SCALE;
+            if (j == 1) {
+                edgePointVertices[index] = -edgePointVertices[index];
+            }
+            index++;
+        }
+    }
+    return true;
+}
+
+int main()
+{
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+
+#ifdef WRITE_MODE
+    // 写入图片像素的隐函数值到文件
+    const char* imagePath_1 = "C:/Users/Administrator/Desktop/无标题.png";
+    const char* imagePath_2 = "C:/Users/Administrator/Desktop/有标题.png";
+    int rows, cols;
+    if (!writeImageValue(rows, cols, imagePath_1, imagePath_2)) {
+        std::cerr << "Implicit function interpolation failed." << std::endl;
+        return -1;
+    }
+#else
+    float weight = 0.0f, preWeight = 0.0f;
     ifstream file1("image1_value.txt"), file2("image2_value.txt");
     if (!file1 || !file2) {
         return false;
     }
     std::string line1, line2;
 
-    // 读取图片大小和步长
+    // 读取文件数据
+    int rows, cols;
     for (int i = 0; i < 3; i++) {
         std::getline(file1, line1);
         std::getline(file2, line2);
@@ -124,76 +254,21 @@ bool implicitFunctionInterpolation(
             cols = std::stoi(line1);
         }
     }
-
-    // 读取图片的隐函数值
-#pragma omp parallel
-    for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
-        for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
-            for (float z = 0.0f; z <= 0.0f; z += STEP) {
+    int dataSize = ((rows / STEP + 1) * (cols / STEP + 1));    // 确保dataSize大小足够
+    float* fileData_1 = new float[dataSize];
+    float* fileData_2 = new float[dataSize];
+    int index = 0;
+    for (int x = 0; x < cols; x += STEP) {
+        for (int y = 0; y < rows; y += STEP) {
+            for (int z = 0; z <= 0; z += STEP) {
                 std::getline(file1, line1);
                 std::getline(file2, line2);
-                float value1 = std::stof(line1);
-                float value2 = std::stof(line2);
-                if (isZero(weight_1 * value1 + weight_2 * value2)) {
-                    points.push_back(Eigen::Vector3f(x, y, z));
-                }
+                fileData_1[index] = std::stof(line1);
+                fileData_2[index] = std::stof(line2);
+                index++;
             }
         }
     }
-#endif
-}
-
-int main()
-{
-    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
-
-    std::vector<Eigen::Vector3f> points;
-
-    // 单个图片形状边界的隐函数零值点
-    //getZeroValuePoints(rows, cols, constraints, weights, P0, P, points);
-
-    // 两张图片形状边界隐函数线性插值的零值点
-    float weight = 0.1f;
-    const char* imagePath_1 = "C:/Users/Administrator/Desktop/无标题.png";
-    const char* imagePath_2 = "C:/Users/Administrator/Desktop/有标题.png";
-    int rows, cols;
-    if (!implicitFunctionInterpolation(weight, rows, cols, imagePath_1, imagePath_2, points)) {
-        std::cerr << "Implicit function interpolation failed." << std::endl;
-        return -1;
-    }
-
-#ifndef WRITE_MODE
-#ifdef IMAGE_DEBUG
-    cv::Mat generatePointImage = cv::Mat::zeros(rows, cols, CV_8UC3);
-    for (int i = 0; i < points.size(); i++) {
-        cv::Point2f point(points[i][0], points[i][1]);
-        cv::circle(generatePointImage, point, 0.5, cv::Scalar(255, 0, 0), 4);
-    }
-    cv::imshow("generate_point_image", generatePointImage);
-    cv::waitKey(0);
-#endif // IMAGE_DEBUG
-
-    std::vector<int> pointIndexes;
-    std::vector<std::pair<int, int>> edgeIndexes;
-    ConcaveHull(points, pointIndexes, edgeIndexes);
-
-#ifdef IMAGE_DEBUG
-    cv::Mat hullPointImage = cv::Mat::zeros(rows, cols, CV_8UC3);
-    for (int i = 0; i < pointIndexes.size(); i++) {
-        cv::Point2f point(points[pointIndexes[i]].x(), points[pointIndexes[i]].y());
-        cv::circle(hullPointImage, point, 0.5, cv::Scalar(255, 0, 0), 4);
-    }
-    cv::imshow("hull_point_image", hullPointImage);
-    cv::waitKey(0);
-    cv::Mat hullContourImage = cv::Mat::zeros(rows, cols, CV_8UC3);
-    for (int i = 0; i < edgeIndexes.size(); i++) {
-        cv::Point2f startPoint(points[edgeIndexes[i].first].x(), points[edgeIndexes[i].first].y());
-        cv::Point2f endPoint(points[edgeIndexes[i].second].x(), points[edgeIndexes[i].second].y());
-        cv::line(hullContourImage, startPoint, endPoint, cv::Scalar(255, 0, 0), 2);
-    }
-    cv::imshow("hull_contour_image", hullContourImage);
-    cv::waitKey(0);
-#endif // IMAGE_DEBUG
 
     // glfw初始化
     glfwInit();
@@ -226,90 +301,21 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
 
-    // 得到OpenGL显示数据，使图像偏移到OpenGL窗口的中心位置，方便OpenGL显示
-    double offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
-    int index = 0;
+    // 得到OpenGL显示数据，并且使图像偏移到OpenGL窗口的中心位置，方便OpenGL显示
+    float offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
     vector<Eigen::Vector3f> actualPoints;
-    pointConvertTriangle(points, pointIndexes, actualPoints);
-    int actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
-    float* actualPointVertices = (float*)malloc(actualPointSize);
-    index = 0;
-    for (int i = 0; i < actualPoints.size(); i++) {
-        for (int j = 0; j < DIMENSION; j++) {
-            actualPointVertices[index] = (actualPoints[i][j] + offset[j]) / OPENGL_SCALE;
-            // 因为OPENGL坐标系和图片坐标系的Y轴方向相反，所以需要翻转Y轴
-            if (j == 1) {
-                actualPointVertices[index] = -actualPointVertices[index];
-            }
-            index++;
-        }
-    }
-    index = 0;
-    int edgePointSize = edgeIndexes.size() * 2 * DIMENSION * sizeof(float);
-    float* edgePointVertices = (float*)malloc(edgePointSize);
-    for (int i = 0; i < edgeIndexes.size(); i++) {
-        Eigen::Vector3f startPoint = points[edgeIndexes[i].first];
-        Eigen::Vector3f endPoint = points[edgeIndexes[i].second];
-        for (int j = 0; j < DIMENSION; j++) {
-            edgePointVertices[index] = (startPoint[j] + offset[j]) / OPENGL_SCALE;
-            if (j == 1) {
-                edgePointVertices[index] = -edgePointVertices[index];
-            }
-            index++;
-        }
-        for (int j = 0; j < DIMENSION; j++) {
-            edgePointVertices[index] = (endPoint[j] + offset[j]) / OPENGL_SCALE;
-            if (j == 1) {
-                edgePointVertices[index] = -edgePointVertices[index];
-            }
-            index++;
-        }
-    }
+    int actualPointSize = 0, edgePointSize = 0;
+    float* actualPointVertices = new float[MAX_ALLOC_SIZE];
+    float* edgePointVertices = new float[MAX_ALLOC_SIZE];
 
-#ifdef DATA_DEBUG
-    // 验证数据
-    std::cout << "---------------points---------------" << points.size() << std::endl;
-    for (int i = 0; i < points.size(); i++) {
-        for (int j = 0; j < DIMENSION; j++) {
-            std::cout << points[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "---------------edge points---------------" << linePoints.size() << std::endl;
-    for (int i = 0; i < edgeIndexes.size() * 2; i++) {
-        for (int j = 0; j < DIMENSION; j++) {
-            std::cout << linePointVertices[i * DIMENSION + j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "---------------actual points---------------" << actualPoints.size() << std::endl;
-    for (int i = 0; i < pointIndexes.size(); i++) {
-        for (int j = 0; j < DIMENSION; j++) {
-            std::cout << actualPointVertices[i * DIMENSION + j] << " ";
-        }
-        std::cout << std::endl;
-    }
-#endif // DATA_DEBUG
-
+    // OpenGL对象定义
     Shader pointShader("../../../../ImplicitFunction/resources/Point.vert", "../../../../ImplicitFunction/resources/Point.frag");
     Shader edgeShader("../../../../ImplicitFunction/resources/Edge.vert", "../../../../ImplicitFunction/resources/Edge.frag");
-
     unsigned int VBOs[2], VAOs[2];
     glGenVertexArrays(2, VAOs);
     glGenBuffers(2, VBOs);
 
-    glBindVertexArray(VAOs[0]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
-    glBufferData(GL_ARRAY_BUFFER, actualPointSize, actualPointVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(VAOs[1]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
-    glBufferData(GL_ARRAY_BUFFER, edgePointSize, edgePointVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
+    // OpenGL主循环
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -321,6 +327,18 @@ int main()
         ImGui::NewFrame();
         ImGui::Begin("window!");
         ImGui::Text("helloworld.");
+        ImGui::InputFloat("image1 weight", &weight, 0.01f, 1.0f, "%.2f");
+        ImGui::SameLine();
+        if (weight != preWeight && weight >= 0.0f && weight <= 1.0f) {
+            std::vector<Eigen::Vector3f> points;
+            implicitFunctionInterpolation(weight, rows, cols, fileData_1, fileData_2, points);
+            preWeight = weight;
+#ifdef EDGE_MODE
+            presentPointAndEdge(points, actualPointSize, edgePointSize, actualPointVertices, edgePointVertices, offset);
+#else
+            presentPoint(points, actualPointSize, actualPointVertices, offset);
+#endif // !EDGE_MODE
+        }
         ImGui::End();
 
         processInput(window);
@@ -338,14 +356,22 @@ int main()
         pointShader.setMat4f("view", view);
         pointShader.setMat4f("projection", projection);
         glBindVertexArray(VAOs[0]);
-        glDrawArrays(GL_TRIANGLES, 0, actualPoints.size());
+        glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
+        glBufferData(GL_ARRAY_BUFFER, actualPointSize, actualPointVertices, GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glDrawArrays(GL_TRIANGLES, 0, actualPointSize / DIMENSION / sizeof(float));
 
         edgeShader.use();
         edgeShader.setMat4f("model", model);
         edgeShader.setMat4f("view", view);
         edgeShader.setMat4f("projection", projection);
         glBindVertexArray(VAOs[1]);
-        glDrawArrays(GL_LINES, 0, edgeIndexes.size() * 2);
+        glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
+        glBufferData(GL_ARRAY_BUFFER, edgePointSize, edgePointVertices, GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, DIMENSION, GL_FLOAT, GL_FALSE, DIMENSION * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glDrawArrays(GL_LINES, 0, edgePointSize / DIMENSION / sizeof(float));
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -362,6 +388,11 @@ int main()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwTerminate();
+
+    delete[] actualPointVertices;
+    delete[] edgePointVertices;
+    delete[] fileData_1;
+    delete[] fileData_2;
 #endif // !WRITE_MODE  
 
     return 0;

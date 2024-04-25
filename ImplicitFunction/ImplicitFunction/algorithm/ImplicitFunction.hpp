@@ -1,7 +1,7 @@
 #ifndef __IMPLICITFUNCTION_HPP__
 #define __IMPLICITFUNCTION_HPP__
 
-#define STEP 2.0f
+#define STEP 2
 #define TOLERANCE 0.5f
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -18,6 +18,7 @@ bool isZero(float x) {
     return fabs(x) < TOLERANCE;
 }
 
+// 径向基函数
 float RBF(Eigen::Vector3f x) {
     float length = x.norm();
     if (length == 0.0f) {
@@ -26,6 +27,7 @@ float RBF(Eigen::Vector3f x) {
     return glm::pow(length, 2.0f) * glm::log(length);
 }
 
+// 隐函数在点x处的值
 float implicitFunctionValue(Eigen::Vector3f x,
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights,
@@ -40,6 +42,7 @@ float implicitFunctionValue(Eigen::Vector3f x,
     return res;
 }
 
+// 解出线性方程组后，检查约束是否满足
 void checkConstraints(
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     const Eigen::VectorXf& weights,
@@ -58,6 +61,7 @@ void checkConstraints(
     }
 }
 
+// 根据约束求解隐函数的未知数：多项式系数和各点权重
 bool solveImplicitEquation(
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
     Eigen::VectorXf& weights, float& P0, Eigen::Vector3f& P)
@@ -114,6 +118,7 @@ bool solveImplicitEquation(
     return true;
 }
 
+// 根据约束得到隐函数零值点，即图片边界
 void getZeroValuePoints(
     int rows, int cols,
     const std::vector<std::pair<Eigen::Vector3f, float>>& constraints,
