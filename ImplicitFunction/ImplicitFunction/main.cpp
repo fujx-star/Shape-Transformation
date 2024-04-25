@@ -12,7 +12,7 @@
 #include "algorithm/ImageProcess.hpp"
 #include "settings/Shader.h"
 #include "settings/Camera.h"
-#include "settings/setting.hpp"
+#include "settings/Setting.hpp"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -238,6 +238,7 @@ int main()
     float weight = 0.0f, preWeight = 0.0f;
     ifstream file1("image1_value.txt"), file2("image2_value.txt");
     if (!file1 || !file2) {
+        std::cerr << "Failed to open file." << std::endl;
         return false;
     }
     std::string line1, line2;

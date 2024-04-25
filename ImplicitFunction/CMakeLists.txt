@@ -16,7 +16,7 @@ include_directories("D:/SoftwareInstallation/opencv/build/include/")
 include_directories("D:/SoftwareInstallation/eigen-3.4.0/")
 include_directories("ImplicitFunction/lib/imgui/")
 include_directories("ImplicitFunction/algorithm/")
-include_directories("ImplicitFunction/settings")
+include_directories("ImplicitFunction/settings/")
 
 link_directories("D:/SoftwareInstallation/Dependency/lib/")
 link_directories("D:/SoftwareInstallation/opencv/build/x64/vc16/lib/")
