@@ -1,7 +1,7 @@
 #ifndef __IMPLICITFUNCTION_HPP__
 #define __IMPLICITFUNCTION_HPP__
 
-#define STEP 1.0f
+#define STEP 2.0f
 #define TOLERANCE 0.5f
 #include <Eigen/Dense>
 #include <Eigen/Core>

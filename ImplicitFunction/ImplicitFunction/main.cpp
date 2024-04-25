@@ -11,14 +11,14 @@
 #include "settings/Shader.h"
 #include "settings/Camera.h"
 #include "settings/setting.hpp"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <imgui.h>
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <Eigen/LU>
@@ -99,9 +99,11 @@ bool implicitFunctionInterpolation(
                 file2 << std::setprecision(std::numeric_limits<float>::max_digits10) << value << std::endl;
             }
         }
+        std::cout << "Finish writing cols[" << x << "]" << std::endl;
     }
     file1.close();
     file2.close();
+    std::cout << "Suceessfully write image1_value.txt and image2_value.txt" << std::endl;
 #else
     float weight_1 = weight;
     float weight_2 = 1.0f - weight;
@@ -110,6 +112,7 @@ bool implicitFunctionInterpolation(
         return false;
     }
     std::string line1, line2;
+
     // 读取图片大小和步长
     for (int i = 0; i < 3; i++) {
         std::getline(file1, line1);
@@ -121,6 +124,8 @@ bool implicitFunctionInterpolation(
             cols = std::stoi(line1);
         }
     }
+
+    // 读取图片的隐函数值
 #pragma omp parallel
     for (float x = 0.0f; x <= static_cast<float>(cols); x += STEP) {
         for (float y = 0.0f; y <= static_cast<float>(rows); y += STEP) {
@@ -144,11 +149,11 @@ int main()
 
     std::vector<Eigen::Vector3f> points;
 
-    // 单张图片形状边界
+    // 单个图片形状边界的隐函数零值点
     //getZeroValuePoints(rows, cols, constraints, weights, P0, P, points);
 
-    // 两张图片形状边界的线性插值
-    float weight = 0.3f;
+    // 两张图片形状边界隐函数线性插值的零值点
+    float weight = 0.1f;
     const char* imagePath_1 = "C:/Users/Administrator/Desktop/无标题.png";
     const char* imagePath_2 = "C:/Users/Administrator/Desktop/有标题.png";
     int rows, cols;
@@ -190,35 +195,40 @@ int main()
     cv::waitKey(0);
 #endif // IMAGE_DEBUG
 
+    // glfw初始化
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
-
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-
     glEnable(GL_DEPTH_TEST);
 
-    // 使图像偏移到OPENGL窗口的中心位置
+    // imgui初始化
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
+
+    // 得到OpenGL显示数据，使图像偏移到OpenGL窗口的中心位置，方便OpenGL显示
     double offset[DIMENSION] = { -static_cast<float>(cols) / 2, -static_cast<float>(rows) / 2, 0.0f };
     int index = 0;
-
     vector<Eigen::Vector3f> actualPoints;
     pointConvertTriangle(points, pointIndexes, actualPoints);
     int actualPointSize = actualPoints.size() * DIMENSION * sizeof(float);
@@ -234,7 +244,6 @@ int main()
             index++;
         }
     }
-
     index = 0;
     int edgePointSize = edgeIndexes.size() * 2 * DIMENSION * sizeof(float);
     float* edgePointVertices = (float*)malloc(edgePointSize);
@@ -307,10 +316,16 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::Begin("window!");
+        ImGui::Text("helloworld.");
+        ImGui::End();
 
         processInput(window);
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::mat4(1.0f);
@@ -322,7 +337,6 @@ int main()
         pointShader.setMat4f("model", model);
         pointShader.setMat4f("view", view);
         pointShader.setMat4f("projection", projection);
-
         glBindVertexArray(VAOs[0]);
         glDrawArrays(GL_TRIANGLES, 0, actualPoints.size());
 
@@ -333,15 +347,20 @@ int main()
         glBindVertexArray(VAOs[1]);
         glDrawArrays(GL_LINES, 0, edgeIndexes.size() * 2);
 
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
-
     }
     glDeleteVertexArrays(2, VAOs);
     glDeleteBuffers(2, VBOs);
     pointShader.Delete();
     edgeShader.Delete();
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     glfwTerminate();
 #endif // !WRITE_MODE  
 
