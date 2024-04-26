@@ -1,6 +1,7 @@
 # ShapeTransformation
 
 - 本项目实现形状转换的功能，从两张图片中捕获形状并基于隐函数在两张图片的形状之间进行线性插值，得到中间形状（参考论文：Turk G, O'brien J F. Shape transformation using variational implicit functions[M]//ACM SIGGRAPH 2005 Courses. 2005: 13-es.）
+- ![meeting_01](./README.assets/meeting_01.gif)
 - 项目结构
   - main.cpp：程序入口
   - algorithm/：算法模块
