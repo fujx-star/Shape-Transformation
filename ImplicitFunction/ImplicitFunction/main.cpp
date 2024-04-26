@@ -84,7 +84,8 @@ bool writeImageValue(
         return false;
     }
 
-    ofstream file1("image1_value.txt"), file2("image2_value.txt");
+    ofstream file1("../../../../ImplicitFunction/resources/image1_value.txt");
+    ofstream file2("../../../../ImplicitFunction/resources/image2_value.txt");
     if (!file1 || !file2) {
         return false;
     }
@@ -227,8 +228,8 @@ int main()
 
 #ifdef WRITE_MODE
     // 写入图片像素的隐函数值到文件
-    const char* imagePath_1 = "C:/Users/Administrator/Desktop/无标题.png";
-    const char* imagePath_2 = "C:/Users/Administrator/Desktop/有标题.png";
+    const char* imagePath_1 = "../../../../ImplicitFunction/resources/heart.png";
+    const char* imagePath_2 = "../../../../ImplicitFunction/resources/star.png";
     int rows, cols;
     if (!writeImageValue(rows, cols, imagePath_1, imagePath_2)) {
         std::cerr << "Implicit function interpolation failed." << std::endl;
@@ -236,7 +237,8 @@ int main()
     }
 #else
     float weight = 0.0f, preWeight = 0.0f;
-    ifstream file1("image1_value.txt"), file2("image2_value.txt");
+    ifstream file1("../../../../ImplicitFunction/resources/image1_value.txt");
+    ifstream file2("../../../../ImplicitFunction/resources/image2_value.txt");
     if (!file1 || !file2) {
         std::cerr << "Failed to open file." << std::endl;
         return false;
